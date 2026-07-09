@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SENEI KOTSU Invoice V11 HTML App</title>
+<style>
+:root{
+  --ink:#0f172a;--line:#111827;--muted:#64748b;--soft:#f6f7fb;--card:#ffffff;
+  --gold:#b88928;--gold2:#f4df9d;--red:#d60000;--blue:#0047d9;--paper-w:1120px;
+  --doc-font:12px;--company-font:12px;--title-font:21px;--table-font:12px;--small-font:9px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif;background:radial-gradient(circle at top left,#fff7df 0,#f8fafc 28%,#eef2f7 100%);color:var(--ink)}
+.app{display:grid;grid-template-columns:450px 1fr;height:100vh;gap:16px;padding:16px}
+.panel,.previewWrap{background:rgba(255,255,255,.96);border:1px solid rgba(184,137,40,.20);border-radius:22px;box-shadow:0 18px 42px rgba(15,23,42,.13);overflow:auto}
+.panel{padding:16px}
+.previewWrap{padding:18px;background:#f8fafc}
+.panel h2{margin:0 0 12px;font-size:22px}
+.version{display:inline-block;background:linear-gradient(135deg,#111827,#374151);color:white;border-radius:999px;padding:4px 10px;font-size:12px;margin-left:8px}
+.group{border:1px solid #eadbb9;border-radius:16px;padding:12px;margin:0 0 12px;background:linear-gradient(180deg,#ffffff,#fffdf8)}
+.group h3{margin:0 0 10px;font-size:14px;background:linear-gradient(135deg,#111827,#2c2414 55%,#b88928);color:#fff;padding:9px 11px;border-radius:11px;letter-spacing:.2px}
+label{font-weight:800;font-size:12px;display:block;margin-top:8px;color:#374151}
+input,textarea,select{width:100%;padding:8px 9px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px;background:#fff}
+textarea{min-height:66px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:#fff;padding-top:10px;border-top:1px solid #eee}
+.btn{border:0;border-radius:11px;padding:9px 12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#111827,#334155);color:#fff;box-shadow:0 6px 14px rgba(15,23,42,.14)}
+.btn.gold{background:#b99029}.btn.red{background:#b30000}.btn.gray{background:#64748b}.btn.blue{background:#1d4ed8}
+.itemBox{border:1px dashed #cbd5e1;border-radius:12px;padding:10px;margin-bottom:9px;background:#f8fafc}
+.small{font-size:12px;color:#64748b}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.toolbar input[type=color]{width:48px;padding:2px;height:36px}
+.toolbar select{width:92px}
+.hr{height:1px;background:#e5e7eb;margin:10px 0}
+
+.paper{width:var(--paper-w);min-height:1540px;background:linear-gradient(180deg,#fff,#fffdf8);margin:auto;padding:22px;border:1.5px solid var(--line);box-shadow:0 16px 44px rgba(15,23,42,.18);font-size:var(--doc-font);line-height:1.18;color:#111;border-radius:8px}
+.paper *{box-sizing:border-box}
+.top{display:grid;grid-template-columns:170px 1fr;align-items:center;border:1.5px solid #111;border-bottom:0;padding:10px;background:linear-gradient(90deg,#fff,#fff8e6)}
+.logo{width:138px;max-height:92px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.14))}
+.company{font-weight:900;font-size:var(--company-font);line-height:1.12;letter-spacing:.05px}
+.titleBar{background:linear-gradient(90deg,#1f2937,#b88928,#1f2937);color:#fff;text-align:center;font-weight:900;font-size:var(--title-font);padding:7px;border:1.5px solid #111;letter-spacing:3px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.infoGrid{display:grid;grid-template-columns:1.05fr 1fr;gap:72px;margin-top:0}
+.box{border:2px solid #111;background:#fff}
+.boxHead{background:linear-gradient(90deg,#e7e5e4,#f8fafc,#eadbb9);border-bottom:1.5px solid #111;text-align:center;font-weight:900;padding:5px}
+.customerName{height:82px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:calc(var(--doc-font) + 5px);text-align:center;padding:8px}
+.tripTable{width:100%;border-collapse:collapse;font-weight:900}
+.tripTable td{border:1.5px solid #111;padding:5px;font-size:var(--table-font)}
+.tripTable td:first-child{width:135px;background:#f9fafb}
+.issue{display:grid;grid-template-columns:210px 190px 1fr;margin-top:0}
+.issue div{border:1.5px solid #111;border-top:0;padding:5px;font-weight:900;font-size:var(--table-font)}
+.issue div:nth-child(1),.issue div:nth-child(2){background:#c9c9c9}
+.notice{text-align:center;color:red;font-weight:900;border:1.5px solid #111;padding:7px;margin-top:14px;white-space:pre-wrap;background:#fffdfd;font-size:var(--table-font)}
+.invoiceTable{width:100%;border-collapse:collapse;table-layout:fixed}
+.invoiceTable th{background:linear-gradient(180deg,#e5e7eb,#c4b5a0);border:1.5px solid #111;padding:5px;font-weight:900;font-size:var(--table-font)}
+.invoiceTable td{border-left:1.5px solid #111;border-right:1.5px solid #111;padding:6px;vertical-align:top;font-size:var(--table-font)}
+.invoiceTable tbody tr:first-child td{padding-top:24px}
+.invoiceTable tbody tr:last-child td{padding-bottom:24px}
+.dateCol{width:150px;text-align:right}
+.detailCol{width:auto}
+.netCol{width:140px;text-align:right}
+.noCol{width:80px;text-align:center}
+.totalCol{width:220px;text-align:right}
+.detailText{white-space:pre-wrap}
+.yellow{background:linear-gradient(90deg,#fff200,#fff7a8,#fff200);text-align:center;border:1.5px solid #111;padding:5px;font-size:var(--table-font);font-weight:700}
+.totalGrid{display:grid;grid-template-columns:150px 1fr 140px 80px 220px;border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111}
+.totalGrid>div{border-right:2px solid #111;min-height:54px;padding:8px}
+.totalGrid>div:last-child{border-right:0}
+.totalLabel{color:red;font-weight:900;font-style:italic;text-align:center}
+.moneyRed{color:red;font-weight:900;text-decoration:underline;text-align:right}
+.moneyBlue{color:blue;font-weight:900;text-decoration:underline;text-align:right}
+.payPlan{display:grid;grid-template-columns:150px 1fr 140px 80px 220px;border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111}
+.payPlan>div{border-right:2px solid #111;padding:6px 8px;min-height:32px}
+.payPlan>div:last-child{border-right:0}
+.payText{color:red;font-weight:900;text-align:center}
+.thbMini{color:blue;font-weight:900;text-align:right}
+.rate{border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111;padding:6px;font-weight:900;min-height:44px}
+.bankGrid{display:grid;grid-template-columns:1fr 1fr 220px;border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111}
+.bankGrid>div{min-height:92px;border-right:2px solid #111;padding:8px;font-weight:900}
+.bankGrid>div:last-child{border-right:0}
+.cancel{border-left:1.5px solid #111;border-right:1.5px solid #111;border-bottom:1.5px solid #111;padding:8px;color:red;font-weight:900;white-space:pre-wrap;font-size:var(--small-font)}
+.blueText{color:blue;font-weight:900}.redText{color:red;font-weight:900}
+@media print{
+  body{background:white}
+  .app{display:block;height:auto;padding:0}
+  .panel{display:none}
+  .previewWrap{box-shadow:none;border-radius:0;padding:0;overflow:visible;background:white}
+  .paper{box-shadow:none;margin:0 auto;border:1.5px solid #111;width:1120px;min-height:auto;page-break-after:auto;border-radius:0}
+  @page{size:A4 portrait;margin:7mm}
+  .invoiceTable tr,.bankGrid,.totalGrid,.payPlan,.notice{break-inside:avoid;page-break-inside:avoid}
+}
+
+/* ===== V4 Executive UI / Print Accuracy / Stable Detail Notes ===== */
+html{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+body{background:
+  radial-gradient(circle at 12% 0%, rgba(244,223,157,.32), transparent 26%),
+  radial-gradient(circle at 100% 10%, rgba(184,137,40,.16), transparent 28%),
+  linear-gradient(135deg,#0b0f19 0%,#111827 32%,#e8edf5 32.2%,#f8fafc 100%) !important;}
+.app{grid-template-columns:470px 1fr;gap:18px;padding:18px;}
+.panel{background:linear-gradient(180deg,rgba(17,24,39,.98),rgba(15,23,42,.96));border:1px solid rgba(244,223,157,.30);box-shadow:0 26px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.08);color:#f8fafc;}
+.previewWrap{background:linear-gradient(180deg,#eef2f7,#dce3ed);border:1px solid rgba(15,23,42,.08);box-shadow:0 20px 60px rgba(0,0,0,.24);}
+.panel h2{color:#fff;letter-spacing:.2px;font-size:24px;}
+.version{background:linear-gradient(135deg,#b88928,#f4df9d);color:#111827;box-shadow:0 0 0 1px rgba(255,255,255,.15) inset;}
+.group{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));border:1px solid rgba(244,223,157,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);}
+.group h3{background:linear-gradient(135deg,#070b14,#263248 56%,#b88928);border:1px solid rgba(244,223,157,.18);}
+label{color:#f4df9d;}
+input,textarea,select{background:rgba(255,255,255,.96);border:1px solid rgba(244,223,157,.28);box-shadow:0 1px 0 rgba(255,255,255,.08);}
+.small{color:#cbd5e1;}.hr{background:rgba(244,223,157,.20)}
+.btn{background:linear-gradient(135deg,#0f172a,#273142);border:1px solid rgba(244,223,157,.22);box-shadow:0 8px 20px rgba(0,0,0,.28);}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.btn.gold{background:linear-gradient(135deg,#9c6b13,#f4df9d);color:#111}.btn.red{background:linear-gradient(135deg,#7f0000,#dc2626)}.btn.gray{background:linear-gradient(135deg,#334155,#64748b)}.btn.blue{background:linear-gradient(135deg,#0b3b9e,#2563eb)}
+.itemBox{background:rgba(255,255,255,.075);border:1px dashed rgba(244,223,157,.35)}
+.btns{background:linear-gradient(180deg,rgba(15,23,42,.80),#0f172a);border-top:1px solid rgba(244,223,157,.25)}
+.paper{background:#fffdf8;border:2px solid #111;border-radius:12px;box-shadow:0 22px 65px rgba(0,0,0,.28)}
+.top{background:linear-gradient(90deg,#fff 0%,#fff9ea 58%,#f1dfb1 100%)}
+.titleBar{background:linear-gradient(90deg,#111827 0%,#b88928 50%,#111827 100%)}
+.boxHead,.invoiceTable th{background:linear-gradient(180deg,#f7f3ea,#c9b184)!important;color:#111!important;}
+.notice{background:#fffafa!important;color:#d60000!important;}
+.yellow{background:#fff200!important;color:#111!important;}
+.detailText{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;line-height:1.18;}
+.excRow td{border-top:0;border-bottom:0!important;padding-top:8px!important;padding-bottom:12px!important;}
+.excNote{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;color:#d60000;font-weight:900;line-height:1.2;display:block;max-width:100%;}
+.invoiceTable td{overflow-wrap:anywhere;}
+.netCol,.noCol,.totalCol{white-space:nowrap;}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
+  body{background:#fff!important;}
+  .paper{background:#fffdf8!important;box-shadow:none!important;border-radius:0!important;}
+  .top{background:linear-gradient(90deg,#fff 0%,#fff9ea 58%,#f1dfb1 100%)!important;}
+  .titleBar{background:linear-gradient(90deg,#111827 0%,#b88928 50%,#111827 100%)!important;color:#fff!important;}
+  .boxHead,.invoiceTable th{background:linear-gradient(180deg,#f7f3ea,#c9b184)!important;color:#111!important;}
+  .notice{background:#fffafa!important;color:#d60000!important;}
+  .yellow{background:#fff200!important;color:#111!important;}
+  .moneyRed,.redText,.excNote,.cancel{color:#d60000!important;}
+  .moneyBlue,.blueText,.thbMini{color:#0047d9!important;}
+}
+
+
+
+/* ===== V5 Rebuilt Stable Invoice Grid (no table-collapse, no colspan breakage) ===== */
+:root{--invoice-cols:minmax(90px,13%) minmax(0,1fr) minmax(86px,12%) minmax(52px,7%) minmax(145px,18%);}
+.invoiceTable{display:none!important;}
+.invoiceGrid{width:100%;display:block;border-left:2px solid #111;border-top:2px solid #111;background:#fff;overflow:hidden;}
+.invoiceGridHeader,.invoiceRow{display:grid;grid-template-columns:var(--invoice-cols);align-items:stretch;width:100%;}
+.invoiceGridHeader>div{background:linear-gradient(180deg,#f7f3ea,#c9b184)!important;color:#111!important;font-weight:900;text-align:center;padding:6px 5px;border-right:2px solid #111;border-bottom:2px solid #111;font-size:var(--table-font);line-height:1.1;min-width:0;}
+.invoiceGridHeader>div:last-child,.invoiceRow>div:last-child{border-right:0;}
+.invoiceRow{min-height:58px;}
+.invoiceRow>div{border-right:2px solid #111;border-bottom:0;padding:8px 6px;vertical-align:top;font-size:var(--table-font);line-height:1.18;min-width:0;overflow:hidden;}
+.invoiceRows{border-bottom:2px solid #111;}
+.invoiceRows .invoiceRow:first-child>div{padding-top:26px;}
+.invoiceRows .invoiceRow:last-child>div{padding-bottom:26px;}
+.dateCell{text-align:right;white-space:pre-wrap;overflow-wrap:break-word;}
+.detailCell{text-align:left;}
+.netCell,.totalCell{text-align:right;white-space:nowrap;}
+.noCell{text-align:center;white-space:nowrap;}
+.detailText{display:block;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;line-height:1.18;max-width:100%;}
+.excOnly{min-height:auto;}
+.excOnly .dateCell{border-right:2px solid #111;}
+.excOnly .detailCell{grid-column:2 / span 4;border-right:0;padding-top:14px!important;padding-bottom:14px!important;}
+.excNote{display:block;color:red!important;font-weight:900;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;max-width:100%;}
+.totalGrid,.payPlan{grid-template-columns:var(--invoice-cols)!important;border-left:2px solid #111!important;border-right:2px solid #111!important;}
+.bankGrid{border-left:2px solid #111!important;border-right:2px solid #111!important;}
+@media print{
+  .invoiceGrid,.invoiceGridHeader>div,.invoiceRow>div,.yellow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel,.notice,.titleBar,.boxHead{
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;
+  }
+  .invoiceRow{break-inside:avoid;page-break-inside:avoid;}
+  .invoiceGrid{break-inside:auto;page-break-inside:auto;}
+}
+
+
+
+/* ===== V6 New Stable Accounting Table =====
+   Rebuilt from zero: no colspan, every row always has 5 real cells.
+   Font-size changes only resize content; column borders remain stable. */
+:root{
+  --invoice-cols: 12.5% minmax(0,1fr) 12% 7% 18%;
+}
+.invoiceGrid{
+  width:100%;
+  display:block;
+  border:2px solid #111;
+  border-bottom:0;
+  background:#fffef9;
+  overflow:visible;
+}
+.invoiceGridHeader,.invoiceRow{
+  display:grid;
+  grid-template-columns:var(--invoice-cols);
+  width:100%;
+  align-items:stretch;
+}
+.invoiceGridHeader>div{
+  min-width:0;
+  padding:7px 6px;
+  border-right:2px solid #111;
+  border-bottom:2px solid #111;
+  background:linear-gradient(180deg,#fff7dc 0%,#d9bc72 100%)!important;
+  font-weight:900;
+  text-align:center;
+  font-size:var(--table-font);
+  line-height:1.05;
+}
+.invoiceGridHeader>div:last-child{border-right:0;}
+.invoiceRows{border-bottom:2px solid #111;}
+.invoiceRow{min-height:68px;}
+.invoiceRow>div{
+  min-width:0;
+  padding:9px 7px;
+  border-right:2px solid #111;
+  border-bottom:1px solid rgba(17,17,17,.12);
+  font-size:var(--table-font);
+  line-height:1.18;
+  overflow-wrap:break-word;
+  word-break:normal;
+  background:#fffef9;
+}
+.invoiceRow>div:last-child{border-right:0;}
+.invoiceRows .invoiceRow:last-child>div{border-bottom:0;}
+.dateCell{text-align:right;white-space:pre-wrap;}
+.detailCell{text-align:left;}
+.netCell,.totalCell{text-align:right;white-space:nowrap;}
+.noCell{text-align:center;white-space:nowrap;}
+.detailText,.excNote{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;max-width:100%;}
+.excOnly{min-height:auto;}
+.excOnly>div{padding-top:12px!important;padding-bottom:14px!important;background:#fffef9!important;}
+.excOnly .detailCell{grid-column:auto!important;border-right:2px solid #111!important;}
+.excOnly .excNote{color:#d60000!important;font-weight:900;line-height:1.22;}
+.yellow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel{border-left:2px solid #111!important;border-right:2px solid #111!important;}
+.yellow{border-top:0!important;border-bottom:2px solid #111!important;}
+.totalGrid,.payPlan{grid-template-columns:var(--invoice-cols)!important;}
+.totalGrid>div,.payPlan>div{border-right:2px solid #111!important;}
+.totalGrid>div:last-child,.payPlan>div:last-child{border-right:0!important;}
+.rate,.bankGrid{border-bottom:2px solid #111!important;}
+.cancel{border-bottom:2px solid #111!important;}
+@media print{
+  .invoiceGrid{border-color:#111!important;background:#fffef9!important;}
+  .invoiceGridHeader>div{background:linear-gradient(180deg,#fff7dc 0%,#d9bc72 100%)!important;color:#111!important;}
+  .invoiceRow>div{background:#fffef9!important;color:#111!important;}
+  .invoiceRow{break-inside:avoid;page-break-inside:avoid;}
+}
+
+
+/* ===== V7 Print A4 + Multiline Customer + Vertical Center Fix ===== */
+.customerInput{min-height:54px}
+.customerName{white-space:pre-wrap;line-height:1.22;min-height:82px;height:auto}
+.rate{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;line-height:1.25}
+.rate .rateMain{display:flex;align-items:center;min-height:28px}
+.rate .rateAmount{display:flex;align-items:center;justify-content:flex-end;min-height:28px;float:none!important}
+.totalGrid>div,.payPlan>div{display:flex;align-items:center}
+.totalLabel,.payText{justify-content:center}
+.moneyRed,.moneyBlue,.thbMini{justify-content:flex-end}
+@media print{
+  @page{size:A4 portrait;margin:6mm}
+  html,body{width:210mm;min-height:297mm;background:#fff!important}
+  .app{display:block!important;height:auto!important;padding:0!important;margin:0!important}
+  .panel{display:none!important}
+  .previewWrap{display:block!important;width:100%!important;padding:0!important;margin:0!important;background:#fff!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+  .paper{
+    width:198mm!important;
+    max-width:198mm!important;
+    min-height:285mm!important;
+    margin:0 auto!important;
+    padding:6mm!important;
+    border:1.2px solid #111!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    transform:none!important;
+    font-size:var(--doc-font)!important;
+  }
+  .top{grid-template-columns:34mm 1fr!important;padding:4mm!important}
+  .logo{width:30mm!important;max-height:20mm!important}
+  .infoGrid{grid-template-columns:1fr 1fr!important;gap:18mm!important}
+  .invoiceGrid,.yellow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel,.notice,.titleBar,.top,.box,.tripTable td,.issue div{
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;
+  }
+  .invoiceGrid{break-inside:auto!important;page-break-inside:auto!important}
+  .invoiceRow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel,.notice{break-inside:avoid!important;page-break-inside:avoid!important}
+}
+
+
+
+/* ===== V8 Responsive Preview + Clean Canvas + Item Reorder ===== */
+.previewWrap{position:relative;}
+.previewScale{width:var(--paper-w); margin:0 auto; transform-origin:top center; transition:transform .16s ease;}
+.previewWrap .paper{box-shadow:none!important;border:0!important;border-radius:0!important;}
+.paper{transition:font-size .12s ease;}
+.itemActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.itemActions .btn{padding:7px 9px;font-size:12px;border-radius:9px}
+.itemBox{touch-action:manipulation}
+@media (max-width:1180px){
+  .app{grid-template-columns:minmax(330px,420px) 1fr!important;padding:10px!important;gap:10px!important}
+}
+@media (max-width:860px){
+  .app{display:block!important;height:auto!important;overflow:auto!important}
+  .panel,.previewWrap{height:auto;max-height:none;margin-bottom:12px}
+  .previewWrap{overflow:auto}
+}
+@media print{
+  .previewScale{width:auto!important;transform:none!important;margin:0!important;}
+  .previewWrap .paper{border:1.2px solid #111!important;}
+}
+
+
+
+/* ===== V9 Auto Days + Bottom Box Alignment ===== */
+.checkline{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#334155;margin:6px 0 10px}
+.bankGrid>div{font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif!important;font-size:var(--small-font)!important;line-height:1.22!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;padding:10px!important}
+.bankGrid>div:nth-child(3){justify-content:center!important}
+.cancel{font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif!important;font-size:var(--small-font)!important;line-height:1.22!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:72px!important;padding:10px!important}
+.rate{min-height:44px!important}
+.rate .rateMain,.rate .rateAmount{align-items:center!important}
+.totalGrid>div,.payPlan>div{align-items:center!important;min-height:46px!important}
+@media print{
+  .bankGrid>div,.cancel{font-size:var(--small-font)!important;line-height:1.18!important;display:flex!important;align-items:center!important}
+  .checkline{display:none!important}
+}
+
+/* ===== V10 Database / History UI ===== */
+.dbList{max-height:180px;overflow:auto;border:1px solid rgba(244,223,157,.22);border-radius:12px;background:rgba(255,255,255,.06);margin-top:8px}
+.dbItem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid rgba(244,223,157,.14);font-size:12px}
+.dbItem:last-child{border-bottom:0}.dbItem b{color:#fff}.dbItem span{color:#cbd5e1}.dbItem .miniBtns{display:flex;gap:4px;flex-wrap:wrap}.miniBtn{border:0;border-radius:8px;padding:5px 7px;font-weight:800;cursor:pointer;background:#334155;color:#fff;font-size:11px}.miniBtn.gold{background:#b88928;color:#111}.miniBtn.red{background:#b91c1c}.miniBtn.blue{background:#1d4ed8}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;background:rgba(244,223,157,.16);border:1px solid rgba(244,223,157,.25);color:#f4df9d;font-size:11px;font-weight:900;margin-top:6px}
+@media print{.dbList,.badge{display:none!important}}
+
+/* ===== V11 HTML App Backup / Search / Vercel-ready tweaks ===== */
+.searchInput{margin-top:8px;background:rgba(255,255,255,.95)!important}
+.dbTools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.btn.slim{padding:7px 9px;font-size:11px;border-radius:9px}
+.appNote{border:1px solid rgba(244,223,157,.28);border-radius:12px;padding:9px;background:rgba(244,223,157,.08);font-size:12px;line-height:1.45;color:#e5e7eb}
+.appNote b{color:#f4df9d}
+@media print{.searchInput,.dbTools,.appNote{display:none!important}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="panel">
+    <h2>SENEI KOTSU Invoice <span class="version">V11 HTML App</span></h2>
+    <div class="group"><h3>ข้อมูลเอกสาร</h3>
+      <label>Customer Name</label><textarea id="customer" class="customerInput">Shinki Japan Traveler</textarea><div class="small">กด Alt+Enter เพื่อขึ้นบรรทัดใหม่ได้</div>
+      <label>Tour Name / T. NAME</label><input id="tname" value="Shinki Japan Traveler">
+      <label>T. DATE</label><input id="tdate" value="18 , 22 FEB'27">
+      <label>NO:</label><input id="invoiceNo" value="">
+      <div class="row"><div><label>Date of Issue</label><input type="date" id="issueDate"></div><div><label>Rate JPY → THB</label><input type="number" step="0.001" id="rate" value="0.21"></div></div>
+    </div>
+
+    <div class="group"><h3>แบ่งจ่าย Deposit / Final</h3>
+      <label><input type="checkbox" id="useDeposit" style="width:auto" onchange="render()"> ใช้ระบบแบ่งจ่าย Deposit</label>
+      <div class="row3">
+        <div><label>Deposit %</label><input type="number" id="depositPct" value="30" min="0" max="100" oninput="render()"></div>
+        <div><label>Deposit Due Date</label><input type="date" id="depositDue" oninput="render()"></div>
+        <div><label>ข้อความ Final</label><input id="finalText" value="FINAL PAY" oninput="render()"></div>
+      </div>
+      <div class="small">เมื่อเปิดใช้งาน ระบบจะแสดงยอด Deposit และ Final Pay แยกในใบแจ้งหนี้ คล้ายตัวอย่าง Shinki Japan Traveler</div>
+    </div>
+
+    <div class="group"><h3>รายการ Invoice</h3><label class="checkline"><input type="checkbox" id="autoDays" checked oninput="render()"> นับจำนวนวันอัตโนมัติจากช่อง Date เช่น 22-24 FEB = 3 วัน</label><div id="items"></div><button class="btn gold" onclick="addItem()">+ Add Item</button></div>
+
+    <div class="group"><h3>ข้อความ / ธนาคาร</h3>
+      <label>หมายเหตุสีแดงด้านบน</label><textarea id="notice">**หมายเหตุ ทางบริษัทจะยึดวันที่การจองตามใบวางบิลเป็นหลักเท่านั้น**
+**หากมีการเปลี่ยนแปลงกรุณาโทรแจ้ง เพื่อเช็ควันอัพเดทอีกครั้งเท่านั้น**</textarea>
+      <label>แถบเหลือง</label><input id="busNote" value="BUS SERVICE [10 HRS. ] DURING 8:00-18:00 ONLY OVERTIME EVERY 30 MINS 5,000 JPY">
+      <label>หมายเหตุอัตราแลกเปลี่ยน</label><input id="rateNote" value="หมายเหตุ : อ้างอิงอัตราแลกเปลี่ยนค่าเงิน">
+      <label>บัญชีญี่ปุ่น</label><textarea id="jpBank">みずほ普通預金　新宿中央支店
+店番号：066
+普通預金口座番号：4338939
+口座名：センエイコウツウ(カ　サマ</textarea>
+      <label>บัญชีไทย</label><textarea id="thBank">Please pay to
+ACC NAME: THANYAPAT JIRAYUTJAROENSUK
+BANK NAME : SCB
+ACC NO: 127-228-4290
+BRANCH :CHOKCHAI4</textarea>
+      <label>Cancellation Fee</label><textarea id="cancel">CANCELLATION FEE
+- NOTIFY BEFORE GROUP DURATION 20 DAYS MUST BE GOOD
+- NOTIFY BEFORE GROUP DURATION 15 DAYS MUST BE 30% FOR TOUR FARE
+- NOTIFY BEFORE GROUP DURATION10 DAYS MUST BE 50% FOR TOUR FARE
+- NOTIFY BEFORE GROUP DURATION 7 DAYS MUST BE 100% FOR TOUR FARE</textarea>
+    </div>
+
+
+    <div class="group"><h3>ปรับขนาดฟอนต์ทั้งเอกสาร</h3>
+      <div class="row3">
+        <div><label>ตัวหนังสือหลัก</label><input type="number" id="docFont" value="12" min="5" max="24" step="1" oninput="updateDocFonts()"></div>
+        <div><label>หัวบริษัท</label><input type="number" id="companyFont" value="13" min="5" max="24" step="1" oninput="updateDocFonts()"></div>
+        <div><label>หัวข้อ請求書</label><input type="number" id="titleFont" value="22" min="8" max="34" step="1" oninput="updateDocFonts()"></div>
+      </div>
+      <div class="row3">
+        <div><label>ตารางรายการ</label><input type="number" id="tableFont" value="12" min="5" max="24" step="1" oninput="updateDocFonts()"></div>
+        <div><label>ข้อความเล็ก/เงื่อนไข</label><input type="number" id="smallFont" value="10" min="5" max="18" step="1" oninput="updateDocFonts()"></div>
+        <div><label>Preset</label><select id="fontPreset" onchange="applyPreset(this.value)"><option value="compact">Compact Luxury</option><option value="tiny">Extra Small</option><option value="normal">Normal</option><option value="large">Large</option></select></div>
+      </div>
+      <div class="small">ปรับได้ทุกส่วนหลักของเอกสาร และ V11 ตั้งค่าเริ่มต้นให้เล็กลง พร้อมรองรับขนาดเล็กสุด 5px</div>
+    </div>
+    <div class="group"><h3>ปรับข้อความที่เลือกใน Preview</h3>
+      <div class="toolbar">
+        <select id="fontSize">
+          <option value="5px">5</option><option value="6px">6</option><option value="7px">7</option><option value="8px">8</option><option value="9px">9</option><option value="10px">10</option><option value="11px">11</option><option value="12px" selected>12</option><option value="13px">13</option><option value="14px">14</option><option value="16px">16</option><option value="18px">18</option><option value="20px">20</option><option value="24px">24</option><option value="28px">28</option><option value="32px">32</option>
+        </select>
+        <input type="color" id="fontColor" value="#000000">
+        <button class="btn blue" onclick="applyStyle()">Apply</button>
+        <button class="btn gray" onclick="clearStyle()">Clear</button>
+      </div>
+      <div class="small">เลือกข้อความใน Preview ด้านขวา แล้วกด Apply — ขนาดฟอนต์ปรับได้เล็กสุด 5px</div>
+    </div>
+
+    <div class="group"><h3>Auto Invoice No. / Customer Database</h3>
+      <div class="row">
+        <div><label>Prefix เลข Invoice</label><input id="invoicePrefix" value="SK" oninput="render()"></div>
+        <div><label>Running No.</label><input type="number" id="invoiceSeq" value="1" min="1"></div>
+      </div>
+      <div class="toolbar">
+        <button class="btn gold" onclick="generateInvoiceNo()">Generate Invoice No.</button>
+        <button class="btn blue" onclick="saveCustomer()">Save Customer</button>
+      </div>
+      <div class="small">Customer Database จะบันทึก Customer Name, T. NAME และ T. DATE ไว้เลือกใช้ซ้ำ</div>
+      <input id="customerSearch" class="searchInput" placeholder="ค้นหาลูกค้า..." oninput="renderCustomerList()">
+      <div class="dbTools">
+        <button class="btn slim" onclick="exportCustomers()">Backup Customers</button>
+        <button class="btn slim blue" onclick="triggerImport('customers')">Restore Customers</button>
+      </div>
+      <div id="customerList" class="dbList"></div>
+    </div>
+
+    <div class="group"><h3>Invoice History</h3>
+      <div class="toolbar">
+        <button class="btn gold" onclick="saveInvoiceHistory()">Save to History</button>
+        <button class="btn blue" onclick="duplicateInvoice()">Duplicate Invoice</button>
+        <button class="btn gray" onclick="newInvoice()">New Invoice</button>
+      </div>
+      <div class="small">บันทึกหลายใบ / เปิดแก้ไข / ทำสำเนา / ลบ ได้ในเครื่องนี้</div>
+      <input id="historySearch" class="searchInput" placeholder="ค้นหา Invoice No. / ลูกค้า / T.Name..." oninput="renderHistoryList()">
+      <div class="dbTools">
+        <button class="btn slim" onclick="exportHistory()">Backup History</button>
+        <button class="btn slim blue" onclick="triggerImport('history')">Restore History</button>
+        <button class="btn slim gold" onclick="exportAllData()">Backup All</button>
+        <button class="btn slim blue" onclick="triggerImport('all')">Restore All</button>
+      </div>
+      <div id="historyList" class="dbList"></div>
+    </div>
+
+    <div class="group"><h3>V11 / Vercel Ready</h3>
+      <div class="appNote"><b>V11 HTML App</b> เก็บข้อมูลใน Local Storage และมี Backup/Restore JSON แล้ว สามารถนำไฟล์นี้ขึ้น GitHub Pages, Cloudflare Pages หรือ Vercel แบบ Static ได้ทันที</div>
+    </div>
+
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="handleImportFile(event)">
+    <div class="btns">
+      <button class="btn" onclick="saveData()">Save Current</button>
+      <button class="btn" onclick="loadData()">Load Current</button>
+      <button class="btn gold" onclick="saveInvoiceHistory()">Save Invoice</button>
+      <button class="btn red" onclick="localStorage.removeItem(KEY);alert('Clear saved data')">Clear Save</button>
+      <button class="btn gold" onclick="window.print()">Print / Save PDF</button>
+    </div>
+  </div>
+  <div class="previewWrap" id="previewWrap"><div class="previewScale" id="previewScale"><div id="paper" class="paper" contenteditable="true"></div></div></div>
+</div>
+
+<script>
+const LOGO='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAKgAAABtCAYAAAA1biqzAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAACvKSURBVHhe7Z13fFTF+v/fZ8+WZLPpPYGEAKEjXQkgqFyQppeqSBXwCgqofEXBgoCFoiBXsF4FEQsiothRURCQDkoQgVBCgATS+ybZdn5/pJA9u0l2N5ty7y/v12tekGfmnM1uPjtn5plnnhEkSZJooolGikJuaKKJxkSTQJto1DQJtIlGjfDfNAaVJAmLxVLxL1Dxb2UUCgWCICAIAgqFAoXif/B7KElISIBU+n+LCWNxFhZDHiZDLpKpCLOpBCxGLOYiABQqL0BEVHkgKLUoVd6IGj9UHv4giCAIgIAgNJ7Pq1EL1Gg0otfrKdLrKSoqIic3l6TERK5euUJaejp5eXlcv37d6hpRFAkPD8fPz4/g4GCaR0UR07IlXlotHp6eaLVatFrtf61oJYsBi9mA2ajHVJSGsfAaBn0apqLMUrG6gKBQImr8UGtDUGkjUHuFIig9UIgaBIVK3rxeaXQCLS4uJi0tjfS0NC5cuMDx48c59ddfnPrrL1JSUuTNHUKtVhMTE0Onm26ic+fOdO3alfCICMLCwggKCkIURfkljQrJYsZsLMBsyMVQkIyh4CqGwusg2T493IKgQO0Vhto7CrVXOKLaF1GtQxDq/3NqNAJNSU4mISGBk/HxHD5yhMMHD5KUlCRv5hZEUaRDhw7cEhfHzb160b5jR2JjY/Hz85M3bVAsFiPm4kwMhakYCi5TkncFyWKUN6tTBIUKtXcUGp9o1NoQlJ6BCIJS3qzOaHCBnjl9mv2//87Bgwc5eOAACQkJ8iZ1ilKppEfPntx8880MuO02esfFERQUJG9Wv0gWSgqvYci/XFoKU11+fLsPAbVXOBqfKDTeUai0oVAPY9UGE2hSUhJfbNvGrl9/5cjhw2RnZ8ub1DutY2Pp0bMnQ4YOZcTw4Xj7+Mib1DmmkmyKsk5jyL+CUZ+GVFePcRcRBAUqbSga7yg8Atqi1PjLm7iVeheovrCQTz7+mK1bt3LixAlyGoEw5URFR9OjRw9mPPAAdwwcWD8TKouJouyz6LNOY9SnIllM8haNCoWoRukZjDagA57+bUBRN4/9ehXoH8ePs+jZZ4mPjyctNVVe3agQRZHmUVEMHjyY5xYvJig4WN7EbVgM+eQm78VQkIzFpJdXN2oUKi88vJvjFd4XpVonr6419SJQs9nMm2+8wcsrV5KVmYnZbJY3abRoNBpatm7Nm2++SVyfPvLqWmMovEZu0k+YDXkN+ji/cCmda6m5dGoXjp+vl7y6WgRBRFR74xd9JyqvMHl1rahzgebn5/PA9Ol88/XXdp3qdYUoKpg+/la8tB4cOnaeg39cpDZvVaFQ8PKqVcyZO1de5TJFWafJSfoFaPgv7Kipa4k/ewVBITDmzh5MnziAtq2dFZuIf8uhePi2kle4TJ0J1Gw2k3jxIveMG8ffp07Jq+ucCaN688pz91T8/PfZFF587VuOxSdSqDe4LNbpM2bw4rJlBAQEyKscRrKY0GfEk5e8V17VYEx79D12HzhjZRs8oBOPzBhE65gQNBrHHfY+kbeiDboJwQ3jUnHJkiVL5MbaYjKZ+G33biaMH8/58+fl1XWOSikyf9YQYqJvjBuDg7wZM7wHzcMDSL6WTW5+ESaT8z36H3/8wdkzZ+h18834+fkhCIK8SbVYzCXo0/4g/9p+eZVbyM4tJD0jH6UoolY7LpD8wiJ2/W4t0AtJaXz2zWFUSpE2rcLx8HBMpCX5lxEUSlTa4Fo7990uUKPRyC87d/KvGTNcXvmpDTovDwYP6Mi/Jg5AqbT9cNrFhjOof0cKiwxcu55Dob5E3qRGEhISOHPmDF26diUkJEReXSWSxYA+4wT51w7Kq9zGh5/t4433fyU3X49SKeLj7YlaVbNQ01Lz+Wbnn3IzFovEgWMXCAv2oWunaHl1lRgLU1Ao1LUWqVsFKkkS333zDY89+mi9i1MQBNq2DOO+UbfwxMND0Ok85E0q8PLSMCCuLT46T47FX6Ko2PnVmcSLFzl37hw9evYk2IEZviSZKUyPp+DaQaed7n+eusyx+EsICGg91ajsfPHK+eanP9mx+yT7j57n6IlECotKiAjxxddHK29qxe9HzrF7v3UPWo5CIdCrSwy9urWUV1WDhKHwGgpRg8ozxOUAFLcKdPeuXTwxfz6JiYnyqjol0F/HmGE9mX5fP8aPvBlPT428iQ0KhUCndpH8uu80V6+55ou9VBa40rdfP3xqcOoXZ58h/9oBl/ybr6//mfc+2UPCxVTOnL+GQhAIC/FFFG3/6EXFRr775QQA2bl6Dh6/wPW0XFpFBxMcWPXvuGHzXs5esA68AfDQqLj7zm5MHNMHP9/qRW6DZMFYlIqo1qHyrPlLbA+3TZISEhKYPHEiJ/60fUzUFb7entzWpx0jBnXhlm4tCQxwzA+Xk6vnYlI6P+4+yRc/HCfleo68icMoFArGT5jAunXr8NLZf31DQQo5STswG/LlVQ6xfO23/Oej3aU/CNC+dQRxPVoxd8YgG9Fk5xTSf+RyCvTFVvYBvdvxzitT7U52iooM9B+9nIxM69/PS6vh0QcGMXxQVyJCXY9TENU++LcY6pILyi09aEF+PrNmzuT3ffvkVXWCv68XI4d0Z+HcYYz4R1d6dGmB1lMtb1aBxSJx6Uome/af4e1Nv/HRtv188/MJdv1+huycQnlzp5AkiYSzZ1FrNPS79VZ5NZLZQG7Sj5iKs+RVDmMoMfL1Tze++BlZ+fydcI3zl9K4o18HVKobj3xPDzVH/0zk0pWMChtA8rVsburQnJaVJo7l/H7kPJu3H7CyqZQiC2YP575RvQnwc84vKkcyl2AqycHDP9bp8ahbetDFzz3Hq6tWYTQ6P5ZzhqiIAEYM7sa9d/fC309LoL/9HouyQOaLlzI4cPQcX+74g9SMPAr1JeTk6jGa3O939PXz49MtW7j9jjus7HlXf0OfccJltxZlPVzciBfJzbdeZVKKCuY/NJSZU263sm/79ijzn//UygYw7Z5+PDd/pNzMI09/ZDVBEgR44uFh3H9PPzyr+eI7gyAo0IX1QhfWW15VLbUW6LGjR7njttsoKXF+NuwIarWSm9o346Ept9OnV2s0aqXdx1Q5iUkZ7Dtyjnc+3E1mVgFGk4niElOtBOIosW3acPjoUTw9PQEwFqWRcXaLW+I2n3v5Cz783NY11TIqhF8+f9LKZjSa6TboORsPxd2DuvLaS5OsbAUFxfQYsgSD4cbY+J67buaFhaMdmv07g6BQEtjmHqfGo7ajbCcwGo3MevBBt4pToRBQqUSaRwQwdVw/ju14jq82PsKQOzrj4+1ZpTivp+UwYvJaBoxewcKXtpJ4OZ28giKKio31Ik6AcwkJvPTii2WvJ5F7ZbdbxAkwdVw/VHYEc+VaptyESiXyrwkDkHto7X12n2w/aCXOdq3DeX6B+8VJ2QJFfsp+p/4etRLopo0bOXnypNzsEl5aDa1jQrlrUFc+fWMWB797lmVPjyag7DFusUgYDCbyC4pJuZ7DtVTriU1YiB9b3pnJgxMH0DIqGKWdGW598Obrr5Nw9izFuRcxFl6TV7tMq5gQZk26DYXCWnZhwfbD3R6Y1J/WLcMq2itFBXG9Yq3alBhMfLb9cMXPwYHerHtxEhqZg1+SSnvlQn0JuXl6CgqLMbk4TCrJu4Sh8KrcXCUuP+IzMzLo07u3W6Levb08mDq2LzOn3IantnTMYzKbKS42kpdXRE5+Edk5etIy8jh38Ro7dp/Cz0fLp2/PtOvfu56ay2NLNrP3YP0GP5czadJEVj41tHRbhhvR60uY8NDbxJ+5WtELjb/7FpY/O07eFIBTZ5J5+c3vSc/MI6pZIOtenGw1ofrx15PMWvgBlHUQLz45mpHDeiABRoOJEoOJjKx8UtPzuHotm8tX0rmelkdggI72bSPo2jGKyDB/u+6u6lDrIgloNQpBUfOEyWWBrlm9mqcWLpSbXSKmeRBTxvWt+NkiSeiLDKSl53Lm3DX+Pn+dQpnbBODVxeO5d+TNcjMA5y6kctvYlXJzvXBr7/ZsWjtDbnYIk8lMcYkRnZf9hYaTp6/y/Ktf8ffZZHx9tLy+bBLdb2ohb1aB0WjmanImzSIDrcRpMpmZ8PDbHPmz1Gc9akgPZk+7g9SMfDJzCsjOLiQzp5DDxy5w9OQluz3m7X3aM2ZET/r3boO3rnTc7SiBsWNR6yLlZhtcEmhOTg59e/fmwoUL8qp65e5BXXjr5alyMwCZWfncNHCx3FwvvPHSZIYN6iI3O8TWrw9z8XI6Myb0JyjAW14NwF9nrvLb/jOEhfoxZnhPebUNxSVGikuMGI1m9PoSUtNzuZCUzjMrtiFJEoIA/7yzO3l5RZy/lEZyajZms2NjZz8fLffcfTMTR8cR1SxQXl0lnv5t8WsxRG62wSWBfvbZZ0yZOFFurndaRYeyZ/sCuRmA73+J51/zN8rNdU5okC8/bZmPj7dzPQqAvqiE20evIC0zn9lTBzJ/9lB5ExssFgvFxaUCNBjNGIwmrlzN4lpqDmlZ+WTnFlJSYqSouEygRaUCvXoth6ycAvntXEIQYFD/TjwwcQC9usbIq+2iUHoQ1HYCotr+l7AclwQ6bMgQfv3lF7m53gn09yH+V/vrDItf3s57m/fIzXXOpLF9eOHJ0XKzQ+zef4Zpj70HZT3Te6unEd08mOISI2azheISA5evZJJ8LZv07EKycgrILyjCaDRjNJkxmy2YzGaysgrJydOTV1CMvsgxD4tCIZRGQKmUKBQCWg8VClGBpiyCSV9YQmpGnvwyKzq1jeSRBwYzaEBHeZVdfJsPRBvUSW62wmmBXr58mS6dOlFUVJqtoiFRKkWSjrwiNwMweto6DpWNr+qT99fM4La+7eVmh5j1xEZ+/O2vip9bRQfjpfXAXJZNxWy2UKgvQV9koKRsEmNvbFgZpahAo1ah0Sjx9FCj1WoIC/EjyM+LIH8dzSL8aN0yDLVaWZaJRUBAQBRLs7OIYqkXICu7kElz3pHf3oZm4QGseHosfW9pI6+yQePTgoBW/5SbrXBaoBvWr+fhWbPk5gYj+Y9X5SYAetz5AtfTXAsCcRW1Wkn8Ly/Y9TfWxOmEFEZNX0tJJZ+ko3hoVOi0GnReHgQE6GgVHULbmDA6d4gkLLQ0ZlUhCAiKUgEqRRGlqEApKlCpSuNGa4pr/ejzAyx6eZvcbJfwUD92bVto466SIyiUhN40q9rlT6cFet+99/LlF1/IzQ1GVQJt2XsBJSXOLb1q1CoCfLUEBuroGNuM6MgbUfOHTlzi7PkUrmfkVhkt17NzNFvXO78lxGKRuH/OO+w9ah3c7efrhY/uRmSWUlSg1WqICAukVfMgOreLpE/vNnhoVKVOeQHe3PArO3b/RWx0MN06NadP77YEB+gIrGLC5QiF+hIGjFpBZraDwS4C7PniKZpH1jxpCmg1Go1Pc7m5AqcEarFYaBEV1ah2ZF4+usquH65Z9/9DQEAQQFCU9hZKUYFSJeLlqcZLq8FH50mzyED69WjFgD5tiQi37/SuzN4DZ3nm5S9Juppp83idPW0g8x+qeWJTGbPFwqYt+3l+zXZ5FasW38eY4T3k5mrp+o/nyM2z3RkaEerPosfuol/vNlW6sOxhMlt4etlWtn5zpMImCKW7Xj09VPh5awnw96pYsw8J8mXq2Di6d3FssuQdeSu6kO5ycwVOCTQxMZH2bWoeW9Q1pZnrQCEI7Nr6JC1jbKPah0/+N1oPNVpPFcGBPrSODqVz+0h6dWuJWl31I8VRnli6ha9/PkFB4Q3/7Krn7mPMCMcFZbFY2HMggRmPr8disf4zqJQiv33xFOFhzoW5bdy8lxVvfE+Jwf7TY8LI3rz09Fi52S6SBD/sPMHsZz4EQKlU4OejJTI8gPatw5k6ti/t2kbIL3MKD/82+Leo+kvtlEC/+/ZbxowaJTe7FYWiPGWigKgQUKnKBvceKny9PfHx0aJWi6iVStRqkcXz/klISNWBuHXJyte/Z92GXypWdba+M5ue3RzrOQAOHj3PrIUfkptnG/LXpUMU2zc+Ijc7xLxFn7D9x+NyMwB3/aMLa5dNlpvtkpqex8j7XyMnT09sTCgto4O5rU97Rg6tusdzFpU2lKC24+XmCpwS6Lq1a3ni8cflZrsoxVKRURbUW3lNGAS8dZ5o1CJaTzWBfl74+GjReWlQKhWolCIqlYhKpcRL60GQv47gAB0xzYNoER1kd69RQ5CfX0KnO56teNQf3bHY4bGe0Whm+MTVnLuUJq8CYNnCMdw3Ok5udojklGzuuOdlDLJeVBQVrH91OgPi2lnZq+Lk31fZ/NVBfL09GTWkO21ah8ub1BqF0pPQzg/KzRU4JdD/mzePN19/XW62oVPbSIYO7FyRMkZUCIhl/y9dbhMI8NPhoVHi6+1JWLA3gQHe+Dq7paAaEpPSyS8oJiMrH4PBTGGRgcIyn2BRsZGiYoP8EgRBwL/sd/Dz1uLpoSI02IeIMD/UalVZ7y5gNltIy8jjx92nWPnG95hMZgQBLh5aJb9llVxPzSHurhflZigLodv6n4cJcHCHgD1uG7WCpGTroOWWUcH8+On8RvMFL0UgvFvVTwqnBDp92jQ++egjudmG7p2i2frebDw01bsZHMFgNGE0mjGZLJjNFs5duM6Va9mkZxaQk6/ngftuJTjIttd66MkPSU3PITtXj9FopqhsNYWypT97YzRBEPApW1P29tKg0agI8vciONgHteqGn9BstpCVXcChPxIrhO6t8yT+1xdkd6ya62m5xI2wba9QCKx+bjwjhzk+lrXH5IffYd/Rc1a2SaPjeGHhGCtbOcUlRkpKjKRcz+HoiUukZeaTX1BE84hAhg3sTFiIb42uKFcJ7/ao3FSBUwK9a/hwfv7pJ7nZBo1axcBbO/D03GFWe9OrwmSyUFRixGgwcT0th2MnkkhITONKSiZmS6kwLRYJSZLIzCogN78IfZGB4hIjP33yOK1a2k6Suv5jKemZuXJznREU6MORH56Tm6vEaDTTa+hSmxn36GE9eHHhGDw9ahfJPmfhJr77Nd7K9vSjd/GviQMwmy0UFRsoMZjZ8/tp9hxOIDu3EJPZUhHOWKgvocRgwtfbk9iWobRrHcGCOcOq3VrjKm4T6KCBA9m7x7HlQ1GhICYqiDtv68xD99+Or7cnCoWAxWKhQG8gIzOPX/ec5rfD50nLyMViKRWhwWAiN7+IQn0JxQ74MfdsW/hfKVCAJ57fwuff3nDf9O3Zmlefn0BIUO0nfSte/453Nu2ysvXt1QaVWkl6Ri4Wi4TFIpGVU0B2Tqk4q8NDo6JVTAhvr5hCs4ia/ZvO0CACLUejVqLTeaBUivj76sjMyis7BEEqi7Ix1SpnU2MRqFIpcm6/c+F9BYUlTHj4bZKuZDB4QCcW/d/dDgeZVAx9jGaMZjPXU3M5fPwCx05e4VxiKsnXM9EXWY+zlaKIpdIBFK5w3z9vZtkzN1IKuQO3CXTk3Xez44cf5OYGpbEIFCDxsOOTpKrQFxsoKCgu/QIXGzl0vHR16fCxRLJy9Vy8msHlq+nyyxymdBhZOpYsH1IKFT+XrsGXt1AqyxZABAG1Sklsy1DeXjEFv1ru8rTGjZOkmQ8+yAfvvy83NyiNSaA/b55P61bO7/2uzNJV2/lo2/4aH7nlCEKpvBSiArWydF1do1ZSVGwgr8A6yLtLxyiahQcSHRGAl1ZNx7YRqNUqut0UjYcL8QPuQKnxI7iD/ZhenBXoksWLWbFsmdzcoDQmgX607kGHoniqo8RgZN5zm/nzr8uklo0Vyyn3IvjoPAkP8cXDU4VaqSwdPvl5EdsilI6x4XTpHMVH2w7w73etJ7Q7tzxBq5hQK1tDo/GOIqB11Ys/Tgn0P++8wyNz5sjNDUpjEuiS+aOYes+NrSu14fudJ/hx918YjKXRTeWPX41GSftWkdw1+CZCgn3ll1Xw2rs/2Qj04LeLCA2p+pqGwCukKz6RA+TmCmyjLKqhc+fOclMTlTh7zn0J04b9owuvvTiRt1ZO5a2VU3lzxRQenzmEzu2aEd08AB87mwVrorGJE0Cpqf5EFacE2qFjR1SqhhmrOEvlII764vCJS3KTW9mweS9LVm3nhVe/ZuXr3/HdzydsgkwcYcMne3j5je/5aNtB/jyZhNFkduk+tUdAras+2MQpgfr6+tK2bVu5uVFSVOzYVgd3cjk5k6sprudgqonyDMiXUzLZuGUfK9/8noUvfWaT9Ksm9h1K4K0PfmXNOztY+upXzF/yKY8v2cwrb/5A0pUMzPUkVqXGG6Wm+l7dKYECNrmHmriB0Wji4PGLcrPbkOcxvZKcybbvjjLzyY1ODS+eenQEA/u1JyungD9PXebrn/5g+47jbNyyj0ee/ZjJc95hxdpv0buQ3NcZVLrmNR4GVn2tHYYNHy43NVGJ736uu/ST9pKeWSwSx08m8dBTH1JcKQDm8lXblDjl/WJsyzCWP3MPTz96d4UvlLJdpfGnr3Dg6Hk2fb6fEVPWMHXue2Rn24YDugNtQM1PY6cF2n/AAHx8q++W/39m76GEWqd0tMeho+fJk2W3q0zi5XQ0ldbvjWWz/8pcSroR2hcc6M20e/vx0+Yn7O5IKCo2kHg5g32Hz9Jv5Es8u8Kx/UiOIqq0qL2ayc022P5mNSCKIhMawZ746miYAX8pZouFT750bw56k8nM2vd+tpt0SxAEvLQavnxvrk2yMDnyz0WpVNC6ZSjnDrxMh9hIu/msyrO8fPzFAboMfI6MzHy7v4ezePi3u7GUVQ22v5EDTJw4EbXa/VEt7iLxkutLge5gy5eHbNbBXcVkMvOfj35j/3HbLC5eWg3db4rhyA/P0fUm6wMO7A0HqkIAvv1oXo3JavPy9fQe8QLH/qydt0JQqNAGOeaydEmgvW6+mT593eOQ/l/kyvUsTl+sfdYOi8XCzt9Oseot2/iHkCAfpo+/la3/echuTv6U684tUggCLH1iNM/O+yftqomcN5stPPzUh7VKm+7p3walxrG9Vi4JFGDe//0fotjwkdkFdTzTdIXIZs3ofus4BNFWOI5iNlv4+sc/mf/CZzaP1OBAb+b9azDzZt5ZZRCxfMZPWQxqdQgCjBranZcX3csd/dpX+QROz8pj3fqdcrNDKJSeeFWzi1OOywIdfOed9KmDsyudJSPL1gdoauCzQGfPnk1EdEe0gR3kVQ6z+cuDPLNim01WP19vT+b9azD3jrylSnEC5OTbZn7Jzql6klWZzu2bsfzpcUwZ27fKw8B++DWenFzH7lcZr8BOKD0cP6XPZYEKgsCLy5ZVpLtuTGTVwSzaUbr36MHkKVMAAa/g7qg8Hf9jUNbLvfLWDla/vcMmr5K/nxfPPHY340f1rlacAAWFtgJ1JAC8nJAgH56cPYwFs4fhpbV9EuTm6zlx6orcXC0qbTCeDo49y3FZoAA333IL02a4lgezLnHXBMUVXly2jOCy0+dEtQ5duONPGYPRxNPLt/Hex7+RI9sK0jYmlFXPjWfMiJ41ijM1LdfupkBn0Wo1TB7bl1eXTiAowDbKP0WW5bpaBAW68L41ZrOTUyuBCoLAggUL6Nip+gxl9U1GHTmWa2L6jBncKjuKRuMdjVdwzblCM7PymTL3Xb7accxmu/DkMX1Zu2wyt/dth6IGcQJcrMKLkeHCk0WlEhnUvwMbXp1O5/bWfktnlkS9grug8a46xU1V1EqgAKFhYbz+5ptyc4PSEBOn2DZteGn5cptgGkGhxDsiDpVn1XGYp88mM3r6Og7/cdHKPdSpXSQ/b3mCJ+cMo02rsBp7znLiz9rPAe9KYjLKOqLOHZqx4dUZLH18FApRQCEK9L+5tbypXTS6CLzD41w6DtH5K+wQFxfHipdflpvrhSw7A//UNCcePW5iy9at+Pvbz+0kKDQExI60m5N91+9nGP3AOi6nZFXM1ju0bca+7c+w/f1HaR0Tis7LdgxYHT/tsn+wRY6dDCbOEBTozeR7+vD3nuWc+m0ZUc2rD5WjbNbu1/IuBIVrUXBuESjA3Ece4Z57761I1lBfFJXY9goJ5913ukZNeHp68u769XToUP2MXSF6EBQ7DkG8scCRnV3IY4s+QqVSEhig47Y+7TnwzSK+3fQokRHOH05AmXuqqh7U7ITzvioEQUCjUuKhrllwgqgmMHY0CtHxZGVynP8EqkAURd5dv54+ffo4/ChyB/ZcSmfO10/2PZ1OxxMLFjBpsmO5jpTaUPxbDEFUlWYMkSSJ+8fdyroXJrDr84W8/+8ZhIXWLkHC5asZmKrwdyrr0W+tUHnhFz0UpUfNvWx1uE2gABqNho8//ZTbbrc+mq8ukSfeys0rIjm17hPX6nQ6/jVzJk8uWOCUoDQ+MfhE3opS40dAgI55D93JgL4d8K7m+HBn0FTTs4XVU0S9UuOHb2R/PHyrPn3EUdwqUIDQ0FDe27Ch3sLysrKtlxQP/5mIxQ3BDNXh7+/PnLlzWbJ0KUqlfUd2dXj4t8GnWX/ULpz+WxOhIb6E2kn8IAilDvi6Rq2LxKdZfzz8a7d5sBy3CxQgMjKSV9esYeasWXW+HHr85GWrnw8etQ2qcCeBQUE8s2gRTz/7LBqNc5OXymh8YvCOuBUPP+vT32qLKCoY/89b5GaaRwTQuo53dHoGtMMnsj8aH8dTUNZEnQgUoEVMDIuXLGHpCy+gq+IcdXeQcDHVqhf9qdIhBO6mbdu2rC774rkjmkuti8Ansh+68FvszvBd5b7Rvenczrq3HDm4u80xiu5CoVDhHd4bn4i+qLS2O2xrQ50JFCAgMJCHZ8/mg02baN3aMZ+Zs+iLSthzsDSL295D57h01TrloLsYO24c/1m/nnHjxtn4OmuDqPZBF9IDvxZDUXnWbkJRTmiwL0ufHEXndqWO8QFx7bhvjGu5RmtC7RWGb4uheIV0Q1E2+XMnTu2LdxWz2cy5c+d4fe1a3nv3XXl1rYmJCmbxYyNY/sYOzl5wr4tJpVLx77VrGTFiBCGhoU5NiJxCkjAbcinKuUD+tQMg2Z+JO4pFkki5lk2hvgRfH637J0iCiHd4HJ5+rVGofersc6kXgZaj1+s5fuwYE+67z60HMQiCgNZDjb7YYBOaVhsGDR7Mv197jajoaLf2mtUiWTAZ8slP2UdxjvWpH40Fz4C2eIf3KXWXubA65Az1KtBy9Ho972/YwNMLF2IymTDb8WU2FCqViuDgYDZs3Ej/AQPqfeGhMuaSbHIu/1p2rLeE5Kaz552ltHdU4OEbg3fkrYhqWy9BXdEgAi0nIz2d1157jS2bN5OXn09Odt37L+2hUCgICg7G18eHF5ctY/CddzaeMEJJwmzMpzDtGMW5l5AsRizmEqhrsQoKFKIHgkKJxjcG75AeKJyMRHIHDSrQcjLS0/n6m2/Y9P775OXlcenSJfR62zV2dxMcEkJEeDhh4eE88thj9OnTp/EI0w4WUzFG/TX0macxG/JKxWosLBWsG1CIGhQqHQpRiULlgzaoMyptCIpa7AyoLY1CoOUU6fUkJCSwefNmzp87R25ODomXLpGSnFyrpKvlqNVqoqKiaBETg7e3N/0HDGDI0KE0b97cJYd7Q2IxFWEuycVQkIyxKK1UrBYzksUAZgMWswFJMiFZzEiW0vA9QaFCUIgIghKFqAZRjUJUIwhKBFGNyiMItXdzRLUOhdL53E91QaMSaGXycnNJSUnh2LFjnIyPJy8/n8KCAjIzM7l+/ToZ6ekUFhaSn2+75SMgIABvHx8CAwIIDQvD398fLy8vgoKC6Na9O9179CA4OLhWjvbGhYTFXILFbEQyFZX1qkVYTMWlAjWXbhsRRA8EhYhC6YFC9ESh8kKh9EQoE2p5YtvGRKMVaGXMZjN6vZ7CggIyMjNJvX6d9LQ0CvV6uwINDAhA5+1NYGAgoaGhBAQEoPXyQqvV1pk7pIm6oc4FmpyczIUL1suPOp2OVq1a4duUoaSJGqgTgX766af88MMPXL16ldzcXJteTqVSodPpCA0NJTY2lgceeIB27ao//Sw1NZXp06fLzS6zfPlybrrpJrkZgOnTp5NahZ920aJF9O7dW26uYOfOnaxZs0ZuBmDChAlMdENWljVr1rBzp2vbfuV07tyZFStWyM0AxMfH89RTT8nNFWzYsIHQ0Lpd30dyIydPnpT69+8vBQYGSmq1WhIEQSrLWWW3iKIoabVaKTo6Wlq6dKn8dlYkJiZKCoXCbWX37t3yl6ggJibGpn156dKli5STkyO/pIKNGzfaXFNelixZIm/uEtOmTbO5t6vl9ttvl9++gt27d9u0r1wSExPll7gdt3mh//rrL26//Xb27t1LZmYmBkPNqzrlY8ukpCSef/55nnnmGXkTK0rPUnJPqe53k7etXOLj43nkkapPpZDKjnmxV6p7TWeQ37e2pSqqey/VXedO3CJQk8nE1KlTycjIsPkjKBQKfH198ff3x8/PD63WvvvCbDazYsUKDh06JK9qVEiSxKZNm/j4449t3msT7sctAt29ezfHj9s//rl3797s3r2bs2fPcvz4cd566y2ioqLkzaCsZ3jdgcNq7dGsWTNiY2MdLrV1yM+ZM4dTp07JzQ2Oj4+PzXutrjRrVvdBzLVC/sx3hZdeeslmfFle3n33XXlz6auvvpJEUbRqp9VqJZ1OJ3Xr1k3eXJLKxqDye1cuW7ZskZKSkhwuxcXF8peoIDo62ub+9kqfPn2k5ORkq2vff/99m3blZfHixVZtXWXq1Kk29y4vY8eOtXmv1ZXU1FT57SvYtWuXzf0rl/+aMajJZLuzspz333+fL7/8kgMHDpCSkoLFYmHo0KFMmTKFCRMmMGPGDGbMmMGjjz7KY489xtSpVR/qVB0hISFERUU5XNzhpN+/fz/Lly+vl2VZR/Hy8rJ5r9WVkLIsKI0Vt7iZPvzwQ6ZMmSI3VxAWFkZ0dDTt27endevWhIaG4ufnR5cuXYiNdWzLw6VLl4iJqXorwQcffECvXr3kZrsEBwcTFFR1cHCLFi1ISkqSm+2i1WpZvXo1s2bNAmDjxo1MmzZN3gyAxYsXs2TJErnZae6//34++OADuRmAkSNHsszBw9bUajWtWrWSmyvYvXs3t1ezATIxMZEWLWq/Ma463CLQ5ORk4uLiuHKl5mRSoigSEBBAcHAw7dq1o3379vTs2ZNhw4ZVu42iJoH27NmTgADHEnVNmjSJydVsFXZGoJSNfz/77DPi4uIaXKARERF0cjAVUWhoKJs2bZKbK2gMAnXLGNRisUiffPKJpNVqbcYpNRWtViu1bt1amjBhgnT8+HH5rSuoaQzqTKlpLOjoGLRy6dOnj5SWltbgY1BnSnR0tPzWVvzPjEEFQWDUqFF8+umnTp+jpNfrOX/+PFu3bmXSpEns27dP3qRRMWnSJLkJgEOHDrFgwQK5uYla4haBAnh4eDBs2DD27NnDO++84/Bjphyj0cjp06eZOnUq2Q0UuOwIr776qt1xm9ls5uOPP67y0duEa7hlDFoVf//9N7/88gtff/01e/fuxWg0IklSjQ7utWvXMnfuXCtbTWPQe++9l+bNHUvvN3jwYAYNGiQ3V1DdGFSSJA4dOkRcXFyN70NOfYxBO3XqxJAhQ+Rmu/j7+/P000/LzRX8T4xBDQaDlJeXJ2VnZ0tZWVlSRkaGlJ6eLqWmpkq5ubkV7UpKSqRjx45Jq1atkjp27CipVCqbMU15GT58uNVrSA6MQXft2iW/xGWqG4OWs3Llymrfg71SH2PQqVOnypu7zP/EGDQ+Pp7FixczZ84cHnzwQcaPH8/YsWMZPHgwixcvrminVqvp3r07jz/+OPv27aN///5W96lMQUHtT8ioa+bNm8fw4cOb4kvrmFoLNC8vjzVr1vDxxx/z+eefs3PnTn777TdOnDjB559/zrVrtvvU/fz8GDdunNxcQVXr9Y0JlUrF6tWrm44or2NqPQbNzs6mTZs2ZGTYz+gxe/Zs5s6dazW7v3jxIo8//jjbt2+3alvOokWLeP75561sNY1BFyxY4JQHITY2ln79+snN4MAYtDI7duxg6tSppKXdOGawKupjDNq3b19mOHluwLhx4+ymJ/qfGINKkiTNmTPHZnxSXlQqlTRixAhp8eLF0urVq6WlS5dKY8aMqXL8FhQUJJ06dUr+EjWOQbVareTt7e1wmTlzpvwlKnBkDFqO2WyWVqxYISmVSpu28lIfY1CVSmXzXmsqSUlJ8peQpEYyBrX9xF3g3LlzUocOHWzegPyD8/X1lTQajU1deRFFUVq5cqVksVjkL1GjQJ0t1U0mnBGoJElSdna2NHnyZJu28lIfAnWlVCW0xiDQWo9BAVq1asW6deuIjrY+L7IyRqOR3NxcSkrs7+FWq9UsXryYBx980OWJh6+vL2FhYYSFhVW7bOpu/Pz8WLp0aY1pwOsLtVpd8Tn8t+/7cotABUGgf//+fPfdd9x///1ORwr16dOHr7/+msceeww/P8fOcKRsXX/o0KGsWbOGAwcOcOTIEfbt28e+ffuIj49n+/btzJs3z65j3d20aNGC9957r8EmeK1atWLevHls376d+Pj4is/hyJEjHDhwgLVr1zJ06NA6z9fqbmo9SaqMJEkYDAays7PZsWMHBw8e5MKFC6SkpFi5jkJDQ4mMjCQuLo4777yTNm3aoNFoqs2DlJ2dzapVqyp+FkWRMWPG0KZNG1QqFaIo2vS8FosFk8mE0Wjkm2++4eTJG6dfdO/enTFjxli1L+eVV14hJ8f+SSEvvfSS3FSBxWLhiy++4I8//pBXATBw4EDuuOMOudlptm3bZhUg3rlzZ+666y5UKhVKpdLmc5QkCbPZjNFoJCEhgW3btlnlw5o/f77dE0ouXrzI+vXr5eYKqrrOnbhVoE004W6q7rKaaKIR0CTQJho1TQJtolHTJNAmGjVNAm2iUdMk0CYaNU0CbaJR0yTQJho1/w82O0d9PEFPAwAAAABJRU5ErkJggg==';
+const KEY='senei_invoice_v10_data';
+const HISTORY_KEY='senei_invoice_history_v10';
+const CUSTOMER_KEY='senei_customer_db_v10';
+const SEQ_KEY='senei_invoice_seq_v10';
+let items=[
+  {date:'18 Feb',detail:'Big Bus\nค่าคั่งรถ (Kaiso) + highway\nNarita Ariport --> Hotel Lucent Takamiya',net:216060,no:1,style:''},
+  {date:'22 Feb',detail:'Big Bus\nค่าคั่งรถ (Kaiso) + highway\nHotel Lucent Takamiya --> Narita Airport',net:216060,no:1,style:''},
+  {date:'',detail:'EXC.\nHOTEL / OCHADAI DV.(3,000Yen/Day)',net:0,no:0,style:'red'}
+];
+
+function $(id){return document.getElementById(id)}
+function fmt(n){return Math.round(Number(n||0)).toLocaleString('en-US')}
+function today(){return new Date().toISOString().slice(0,10)}
+function addDays(days){const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10)}
+function dateText(v){if(!v)return ''; const d=new Date(v+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(',','')}
+function dueText(v){if(!v)return ''; const d=new Date(v+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase().replace(',','')}
+function esc(s){return String(s??'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+function nl(s){return esc(s).replace(/\n/g,'<br>')}
+
+function monthIndex(m){
+  const map={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUNE:5,JUL:6,JULY:6,AUG:7,SEP:8,SEPT:8,OCT:9,NOV:10,DEC:11};
+  return map[String(m||'').toUpperCase().replace(/[^A-Z]/g,'')];
+}
+function baseYear(){
+  const issue=($('issueDate')?.value||'').slice(0,4);
+  const y=Number(issue);
+  return y||new Date().getFullYear();
+}
+function inclusiveDays(d1,d2){
+  const ms=24*60*60*1000;
+  const diff=Math.round((d2-d1)/ms)+1;
+  return diff>0 && diff<370 ? diff : null;
+}
+function autoDaysFromDate(text){
+  const t=String(text||'').toUpperCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  if(!t || t.includes(',')) return null;
+  let m=t.match(/^(\d{1,2})\s*-\s*(\d{1,2})\s*([A-Z]{3,9})/);
+  if(m){
+    const y=baseYear(), mi=monthIndex(m[3]); if(mi===undefined)return null;
+    return inclusiveDays(new Date(y,mi,Number(m[1])), new Date(y,mi,Number(m[2])));
+  }
+  m=t.match(/^(\d{1,2})\s*([A-Z]{3,9})\s*-\s*(\d{1,2})\s*([A-Z]{3,9})/);
+  if(m){
+    let y=baseYear(), m1=monthIndex(m[2]), m2=monthIndex(m[4]); if(m1===undefined||m2===undefined)return null;
+    let d1=new Date(y,m1,Number(m[1])), d2=new Date(y,m2,Number(m[3]));
+    if(d2<d1)d2=new Date(y+1,m2,Number(m[3]));
+    return inclusiveDays(d1,d2);
+  }
+  m=t.match(/^(\d{1,2})\s+([A-Z]{3,9})/);
+  if(m) return 1;
+  return null;
+}
+function effectiveNo(it){
+  if($('autoDays')?.checked){
+    const days=autoDaysFromDate(it.date);
+    if(days) return days;
+  }
+  return Number(it.no||0);
+}
+
+function drawItems(){
+  const box=$('items'); box.innerHTML='';
+  items.forEach((it,i)=>{
+    const div=document.createElement('div'); div.className='itemBox';
+    div.innerHTML=`<div class="row"><div><label>Date</label><input value="${esc(it.date)}" oninput="items[${i}].date=this.value;render()"></div><div><label>Style</label><select onchange="items[${i}].style=this.value;render()"><option value="" ${!it.style?'selected':''}>Normal</option><option value="blue" ${it.style==='blue'?'selected':''}>Blue</option><option value="red" ${it.style==='red'?'selected':''}>Red</option></select></div></div>
+    <label>Detail</label><textarea oninput="items[${i}].detail=this.value;render()">${esc(it.detail)}</textarea>
+    <div class="row"><div><label>NET</label><input type="number" value="${it.net}" oninput="items[${i}].net=this.value;render()"></div><div><label>NO</label><input type="number" value="${it.no}" oninput="items[${i}].no=this.value;render()"></div></div>
+    <div class="itemActions"><button class="btn gray" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}>↑ Up</button><button class="btn gray" onclick="moveItem(${i},1)" ${i===items.length-1?'disabled':''}>↓ Down</button><button class="btn red" onclick="removeItem(${i})">Delete</button></div>`;
+    box.appendChild(div);
+  });
+}
+function addItem(data={date:'',detail:'',net:0,no:1,style:''}){items.push(data);drawItems();render()}
+function removeItem(i){items.splice(i,1);drawItems();render()}
+function moveItem(i,dir){const j=i+dir;if(j<0||j>=items.length)return;[items[i],items[j]]=[items[j],items[i]];drawItems();render()}
+
+function updateDocFonts(){
+  document.documentElement.style.setProperty('--doc-font', ($('docFont')?.value||12)+'px');
+  document.documentElement.style.setProperty('--company-font', ($('companyFont')?.value||12)+'px');
+  document.documentElement.style.setProperty('--title-font', ($('titleFont')?.value||21)+'px');
+  document.documentElement.style.setProperty('--table-font', ($('tableFont')?.value||12)+'px');
+  document.documentElement.style.setProperty('--small-font', ($('smallFont')?.value||9)+'px');
+}
+function applyPreset(v){
+  const presets={tiny:[9,9,16,9,7],compact:[12,12,21,12,9],normal:[15,15,24,15,12],large:[18,17,28,18,14]};
+  const a=presets[v]||presets.compact;
+  ['docFont','companyFont','titleFont','tableFont','smallFont'].forEach((id,i)=>$(id).value=a[i]);
+  updateDocFonts();
+}
+
+function collect(){
+  return {
+    customer:$('customer').value,tname:$('tname').value,tdate:$('tdate').value,invoiceNo:$('invoiceNo').value,
+    issueDate:$('issueDate').value,rate:$('rate').value,notice:$('notice').value,busNote:$('busNote').value,
+    rateNote:$('rateNote').value,jpBank:$('jpBank').value,thBank:$('thBank').value,cancel:$('cancel').value,
+    useDeposit:$('useDeposit').checked,depositPct:$('depositPct').value,depositDue:$('depositDue').value,finalText:$('finalText').value,invoicePrefix:$('invoicePrefix')?.value||'SK',invoiceSeq:$('invoiceSeq')?.value||'1',
+    docFont:$('docFont').value,companyFont:$('companyFont').value,titleFont:$('titleFont').value,tableFont:$('tableFont').value,smallFont:$('smallFont').value,autoDays:$('autoDays')?.checked,items
+  }
+}
+
+
+function fitPreview(){
+  const wrap=$('previewWrap'), scale=$('previewScale');
+  if(!wrap||!scale) return;
+  if(window.matchMedia('print').matches){scale.style.transform='none';scale.style.height='auto';return;}
+  const available=Math.max(320, wrap.clientWidth-28);
+  const base=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--paper-w'))||1120;
+  const ratio=Math.min(1, available/base);
+  scale.style.transform=`scale(${ratio})`;
+  const paper=$('paper');
+  scale.style.height=paper ? (paper.offsetHeight*ratio)+'px' : 'auto';
+}
+
+function render(){
+  const d=collect();
+  const total=items.reduce((s,it)=>s+(Number(it.net||0)*effectiveNo(it)),0);
+  const rate=Number(d.rate||0);
+  const thb=total*rate;
+  const depPct=Math.max(0,Math.min(100,Number(d.depositPct||0)));
+  const depJPY=Math.round(total*depPct/100);
+  const finJPY=total-depJPY;
+  const depTHB=Math.round(depJPY*rate);
+  const finTHB=Math.round(finJPY*rate);
+  const rows=items.map(it=>{
+    const noVal=effectiveNo(it);
+    const lineTotal=Number(it.net||0)*noVal;
+    const cls=it.style==='blue'?'blueText':it.style==='red'?'redText':'';
+    const isExcNote = it.style==='red' && !Number(it.net||0) && !noVal;
+    if(isExcNote){
+      return `<div class="invoiceRow excOnly"><div class="dateCell">${nl(it.date)}</div><div class="detailCell ${cls}"><span class="excNote">${nl(it.detail)}</span></div><div class="netCell"></div><div class="noCell"></div><div class="totalCell"></div></div>`;
+    }
+    return `<div class="invoiceRow"><div class="dateCell">${nl(it.date)}</div><div class="detailCell ${cls}"><div class="detailText">${nl(it.detail)}</div></div><div class="netCell">${Number(it.net||0)?fmt(it.net):''}</div><div class="noCell">${noVal?fmt(noVal):''}</div><div class="totalCell">${lineTotal?`JPY&nbsp;&nbsp; ${fmt(lineTotal)}`:''}</div></div>`;
+  }).join('');
+
+  const depositBlock = d.useDeposit ? `
+    <div class="payPlan">
+      <div></div><div class="payText">DEPOSIT PAY ${fmt(depPct)} % ${d.depositDue?'WITHIN '+dueText(d.depositDue):''}</div><div class="thbMini">THB&nbsp;&nbsp; ${fmt(depTHB)}</div><div></div><div class="moneyRed">JPY&nbsp;&nbsp; ${fmt(depJPY)}</div>
+    </div>
+    <div class="payPlan">
+      <div></div><div class="payText">${esc(d.finalText)} ${fmt(100-depPct)}%</div><div class="thbMini">THB&nbsp;&nbsp; ${fmt(finTHB)}</div><div></div><div class="moneyRed">JPY&nbsp;&nbsp; ${fmt(finJPY)}</div>
+    </div>` : '';
+
+  $('paper').innerHTML=`<div class="top"><img class="logo" src="${LOGO}"><div class="company">SENEI KOTSU Co., Ltd<br>JAPAN ASSOCIATION OF TRAVEL AGENTS MRMBER<br>TOKYO GOVERNOR'R REGISTERED TRAVEL AGENCY NUMBER :2-7928 POST CODE :160-0022<br>TOKYO,SHINJUKU,SHINJUKU-KU 4-1-22 SHINJUKUKOMURO BULDING 11 Fl.<br>TEL:03-6709-8156</div></div>
+  <div class="titleBar">請求書</div>
+  <div class="infoGrid"><div class="box"><div class="boxHead">CUSTOMER NAME</div><div class="customerName">${nl(d.customer)}</div></div><table class="tripTable"><tr><td>T. NAME</td><td>${esc(d.tname)}</td></tr><tr><td>T. DATE</td><td>${esc(d.tdate)}</td></tr><tr><td>NO:</td><td>${esc(d.invoiceNo)}</td></tr></table></div>
+  <div class="issue"><div>DATE OF ISSUE</div><div>${dateText(d.issueDate)}</div><div></div></div>
+  <div class="notice">${nl(d.notice)}</div>
+  <div class="invoiceGrid"><div class="invoiceGridHeader"><div>DATE</div><div>DETAIL</div><div>NET</div><div>NO</div><div>TOTAL</div></div><div class="invoiceRows">${rows}</div></div>
+  <div class="yellow">${esc(d.busNote)}</div>
+  <div class="totalGrid"><div></div><div class="totalLabel">Total</div><div></div><div></div><div class="moneyRed">JPY&nbsp;&nbsp; ${fmt(total)}</div></div>
+  ${depositBlock}
+  <div class="rate"><div class="rateMain">${esc(d.rateNote)}&nbsp;&nbsp; ( 1 JPY = ${d.rate} THB )</div><div class="moneyBlue rateAmount">THB&nbsp;&nbsp; ${fmt(thb)}</div></div>
+  <div class="bankGrid"><div>${nl(d.jpBank)}</div><div>${nl(d.thBank)}</div><div></div></div>
+  <div class="cancel">${nl(d.cancel)}</div>`;
+  requestAnimationFrame(fitPreview);
+}
+
+
+let importMode='';
+function downloadJSON(name,data){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},300);
+}
+function stamp(){return new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}
+function exportCustomers(){downloadJSON('senei-customers-'+stamp()+'.json',{type:'senei-customers-v11',customers:getCustomers()})}
+function exportHistory(){downloadJSON('senei-invoice-history-'+stamp()+'.json',{type:'senei-history-v11',history:getHistory()})}
+function exportAllData(){downloadJSON('senei-invoice-app-backup-'+stamp()+'.json',{type:'senei-all-v11',current:collect(),customers:getCustomers(),history:getHistory(),seq:localStorage.getItem(SEQ_KEY)||'1'})}
+function triggerImport(mode){importMode=mode; const f=$('importFile'); if(f){f.value=''; f.click();}}
+function handleImportFile(ev){
+  const file=ev.target.files&&ev.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(importMode==='customers'){
+        const arr=Array.isArray(data)?data:data.customers;
+        if(!Array.isArray(arr)) throw new Error('ไม่พบข้อมูล customers');
+        if(confirm('Restore Customer Database? ข้อมูลเดิมจะถูกแทนที่')) setCustomers(arr);
+      }else if(importMode==='history'){
+        const arr=Array.isArray(data)?data:data.history;
+        if(!Array.isArray(arr)) throw new Error('ไม่พบข้อมูล history');
+        if(confirm('Restore Invoice History? ข้อมูลเดิมจะถูกแทนที่')) setHistory(arr);
+      }else if(importMode==='all'){
+        if(!confirm('Restore All Data? Current / Customers / History จะถูกแทนที่')) return;
+        if(data.current) applyData(data.current);
+        if(Array.isArray(data.customers)) setCustomers(data.customers);
+        if(Array.isArray(data.history)) setHistory(data.history);
+        if(data.seq) localStorage.setItem(SEQ_KEY,String(data.seq));
+      }
+      renderCustomerList(); renderHistoryList(); render(); alert('Restore สำเร็จ');
+    }catch(e){alert('Import ไม่สำเร็จ: '+e.message)}
+  };
+  reader.readAsText(file);
+}
+
+function saveData(){localStorage.setItem(KEY,JSON.stringify(collect()));alert('Saved Data แล้ว')}
+function loadData(){
+  const raw=localStorage.getItem(KEY); if(!raw){alert('ยังไม่มีข้อมูลที่บันทึก');return}
+  const d=JSON.parse(raw);
+  ['customer','tname','tdate','invoiceNo','issueDate','rate','notice','busNote','rateNote','jpBank','thBank','cancel','depositPct','depositDue','finalText','invoicePrefix','invoiceSeq','docFont','companyFont','titleFont','tableFont','smallFont'].forEach(k=>{if($(k) && d[k]!==undefined)$(k).value=d[k]??''});
+  updateDocFonts();
+  $('useDeposit').checked=!!d.useDeposit; if($('autoDays')) $('autoDays').checked = d.autoDays!==undefined ? !!d.autoDays : true;
+  items=d.items||[];
+  updateDocFonts();
+  drawItems(); render(); renderCustomerList(); renderHistoryList(); alert('Loaded Data แล้ว');
+}
+
+function snapshotTitle(d){
+  return (d.invoiceNo||'(No invoice no.)')+' — '+(d.customer||d.tname||'Untitled');
+}
+function getHistory(){try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]')}catch(e){return []}}
+function setHistory(list){localStorage.setItem(HISTORY_KEY,JSON.stringify(list));renderHistoryList()}
+function getCustomers(){try{return JSON.parse(localStorage.getItem(CUSTOMER_KEY)||'[]')}catch(e){return []}}
+function setCustomers(list){localStorage.setItem(CUSTOMER_KEY,JSON.stringify(list));renderCustomerList()}
+function generateInvoiceNo(){
+  const prefix=($('invoicePrefix')?.value||'SK').trim()||'SK';
+  let seq=Number($('invoiceSeq')?.value||localStorage.getItem(SEQ_KEY)||1);
+  if(!seq || seq<1) seq=1;
+  const y=($('issueDate')?.value||today()).slice(0,4);
+  $('invoiceNo').value=`${prefix}-${y}-${String(seq).padStart(4,'0')}`;
+  $('invoiceSeq').value=seq+1;
+  localStorage.setItem(SEQ_KEY,String(seq+1));
+  render();
+}
+function saveCustomer(){
+  const d=collect();
+  const name=(d.customer||'').trim();
+  if(!name){alert('กรุณาใส่ Customer Name ก่อน');return}
+  let list=getCustomers();
+  const rec={id:Date.now(),customer:d.customer,tname:d.tname,tdate:d.tdate,updated:new Date().toISOString()};
+  const idx=list.findIndex(x=>(x.customer||'').trim()===name);
+  if(idx>=0) list[idx]={...list[idx],...rec,id:list[idx].id}; else list.unshift(rec);
+  setCustomers(list.slice(0,100));
+  alert('บันทึกลูกค้าแล้ว');
+}
+function loadCustomer(id){
+  const c=getCustomers().find(x=>String(x.id)===String(id)); if(!c)return;
+  $('customer').value=c.customer||''; $('tname').value=c.tname||''; $('tdate').value=c.tdate||'';
+  render();
+}
+function deleteCustomer(id){
+  if(!confirm('ลบลูกค้านี้?'))return;
+  setCustomers(getCustomers().filter(x=>String(x.id)!==String(id)));
+}
+function renderCustomerList(){
+  const el=$('customerList'); if(!el)return;
+  const list=getCustomers();
+  if(!list.length){el.innerHTML='<div class="dbItem"><span>ยังไม่มีลูกค้าที่บันทึก</span></div>';return}
+  el.innerHTML=list.map(c=>`<div class="dbItem"><div><b>${esc((c.customer||'').split('\n')[0])}</b><br><span>${esc(c.tname||'')} ${esc(c.tdate||'')}</span></div><div class="miniBtns"><button class="miniBtn blue" onclick="loadCustomer(${c.id})">Load</button><button class="miniBtn red" onclick="deleteCustomer(${c.id})">Del</button></div></div>`).join('');
+}
+function saveInvoiceHistory(){
+  const d=collect();
+  if(!d.invoiceNo && confirm('ยังไม่มี Invoice No. ต้องการสร้างอัตโนมัติไหม?')) generateInvoiceNo();
+  const fresh=collect();
+  let list=getHistory();
+  const rec={id:Date.now(),updated:new Date().toISOString(),data:fresh,total:items.reduce((s,it)=>s+(Number(it.net||0)*effectiveNo(it)),0)};
+  list.unshift(rec);
+  setHistory(list.slice(0,200));
+  saveData();
+  alert('บันทึก Invoice History แล้ว');
+}
+function loadInvoice(id){
+  const rec=getHistory().find(x=>String(x.id)===String(id)); if(!rec)return;
+  applyData(rec.data);
+  alert('โหลด Invoice แล้ว');
+}
+function deleteInvoice(id){
+  if(!confirm('ลบ Invoice นี้จาก History?'))return;
+  setHistory(getHistory().filter(x=>String(x.id)!==String(id)));
+}
+function duplicateInvoice(id){
+  let data;
+  if(id){const rec=getHistory().find(x=>String(x.id)===String(id)); data=rec?.data;}
+  else data=collect();
+  if(!data)return;
+  applyData({...data,invoiceNo:''});
+  generateInvoiceNo();
+  alert('ทำสำเนา Invoice แล้ว');
+}
+function newInvoice(){
+  if(!confirm('เริ่ม Invoice ใหม่? ข้อมูลที่ยังไม่บันทึกอาจหาย'))return;
+  $('customer').value=''; $('tname').value=''; $('tdate').value=''; $('invoiceNo').value=''; $('issueDate').value=today();
+  items=[{date:'',detail:'',net:0,no:1,style:''}]; drawItems(); render(); renderCustomerList(); renderHistoryList();
+}
+function renderHistoryList(){
+  const el=$('historyList'); if(!el)return;
+  const q=($('historySearch')?.value||'').toLowerCase().trim();
+  const list=getHistory().filter(r=>{const d=r.data||{}; return !q || [d.invoiceNo,d.customer,d.tname,d.tdate].join(' ').toLowerCase().includes(q)});
+  if(!list.length){el.innerHTML='<div class="dbItem"><span>ยังไม่มี Invoice History ที่ตรงกับการค้นหา</span></div>';return}
+  el.innerHTML=list.map(r=>{const d=r.data||{}; const dt=new Date(r.updated).toLocaleString('th-TH'); return `<div class="dbItem"><div><b>${esc(snapshotTitle(d))}</b><br><span>${dt} | JPY ${fmt(r.total||0)}</span></div><div class="miniBtns"><button class="miniBtn blue" onclick="loadInvoice(${r.id})">Open</button><button class="miniBtn gold" onclick="duplicateInvoice(${r.id})">Copy</button><button class="miniBtn red" onclick="deleteInvoice(${r.id})">Del</button></div></div>`}).join('');
+}
+function applyData(d){
+  ['customer','tname','tdate','invoiceNo','issueDate','rate','notice','busNote','rateNote','jpBank','thBank','cancel','depositPct','depositDue','finalText','invoicePrefix','invoiceSeq','docFont','companyFont','titleFont','tableFont','smallFont'].forEach(k=>{if($(k) && d[k]!==undefined)$(k).value=d[k]??''});
+  if($('useDeposit')) $('useDeposit').checked=!!d.useDeposit;
+  if($('autoDays')) $('autoDays').checked=d.autoDays!==undefined?!!d.autoDays:true;
+  items=Array.isArray(d.items)?JSON.parse(JSON.stringify(d.items)):[];
+  updateDocFonts(); drawItems(); render(); renderCustomerList(); renderHistoryList();
+}
+
+function applyStyle(){
+  const sel=window.getSelection();
+  if(!sel.rangeCount || sel.isCollapsed){alert('กรุณาเลือกข้อความใน Preview ก่อน');return}
+  const range=sel.getRangeAt(0);
+  const span=document.createElement('span');
+  span.style.fontSize=$('fontSize').value;
+  span.style.color=$('fontColor').value;
+  try{span.appendChild(range.extractContents()); range.insertNode(span); sel.removeAllRanges();}
+  catch(e){alert('เลือกข้อความใหม่อีกครั้ง')}
+}
+function clearStyle(){document.execCommand('removeFormat',false,null)}
+
+['customer','tname','tdate','invoiceNo','issueDate','rate','notice','busNote','rateNote','jpBank','thBank','cancel','depositPct','depositDue','finalText'].forEach(id=>$(id).addEventListener('input',render));
+$('autoDays')?.addEventListener('change',render);
+$('issueDate').value=today();
+$('depositDue').value=addDays(15);
+updateDocFonts();
+drawItems(); render(); renderCustomerList(); renderHistoryList();
+window.addEventListener('resize', fitPreview);
+window.addEventListener('beforeprint',()=>{const scale=$('previewScale'); if(scale){scale.style.transform='none';scale.style.height='auto';}});
+window.addEventListener('afterprint',fitPreview);
+</script>
+</body>
+</html>
