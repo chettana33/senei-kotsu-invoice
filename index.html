@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SENEI KOTSU Invoice V11 HTML App</title>
+<title>SENEI KOTSU Invoice V12 HTML App</title>
 <style>
 :root{
   --ink:#0f172a;--line:#111827;--muted:#64748b;--soft:#f6f7fb;--card:#ffffff;
@@ -324,12 +324,18 @@ input,textarea,select{background:rgba(255,255,255,.96);border:1px solid rgba(244
 .badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;background:rgba(244,223,157,.16);border:1px solid rgba(244,223,157,.25);color:#f4df9d;font-size:11px;font-weight:900;margin-top:6px}
 @media print{.dbList,.badge{display:none!important}}
 
-/* ===== V11 HTML App Backup / Search / Vercel-ready tweaks ===== */
+/* ===== V12 HTML App Backup / Search / Vercel-ready tweaks ===== */
 .searchInput{margin-top:8px;background:rgba(255,255,255,.95)!important}
 .dbTools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .btn.slim{padding:7px 9px;font-size:11px;border-radius:9px}
 .appNote{border:1px solid rgba(244,223,157,.28);border-radius:12px;padding:9px;background:rgba(244,223,157,.08);font-size:12px;line-height:1.45;color:#e5e7eb}
 .appNote b{color:#f4df9d}
+
+.customerSelect{width:100%;min-height:38px;background:#07101e;color:#e5e7eb;border:1px solid rgba(244,223,157,.26);border-radius:10px;padding:9px;font-size:12px}
+.customerStatus{min-height:20px;margin-top:7px;font-size:12px;color:#f4df9d;line-height:1.4}
+.dbItem.active{border-color:rgba(244,223,157,.65);background:rgba(244,223,157,.12)}
+.dbItem small{color:#94a3b8;display:block;margin-top:2px;line-height:1.35}
+.dbFields textarea{min-height:54px}
 @media print{.searchInput,.dbTools,.appNote{display:none!important}}
 
 </style>
@@ -337,7 +343,7 @@ input,textarea,select{background:rgba(255,255,255,.96);border:1px solid rgba(244
 <body>
 <div class="app">
   <div class="panel">
-    <h2>SENEI KOTSU Invoice <span class="version">V11 HTML App</span></h2>
+    <h2>SENEI KOTSU Invoice <span class="version">V12 HTML App</span></h2>
     <div class="group"><h3>ข้อมูลเอกสาร</h3>
       <label>Customer Name</label><textarea id="customer" class="customerInput">Shinki Japan Traveler</textarea><div class="small">กด Alt+Enter เพื่อขึ้นบรรทัดใหม่ได้</div>
       <label>Tour Name / T. NAME</label><input id="tname" value="Shinki Japan Traveler">
@@ -412,14 +418,27 @@ BRANCH :CHOKCHAI4</textarea>
       </div>
       <div class="toolbar">
         <button class="btn gold" onclick="generateInvoiceNo()">Generate Invoice No.</button>
-        <button class="btn blue" onclick="saveCustomer()">Save Customer</button>
+        <button class="btn blue" onclick="saveCustomer()">Save / Update Customer</button>
       </div>
-      <div class="small">Customer Database จะบันทึก Customer Name, T. NAME และ T. DATE ไว้เลือกใช้ซ้ำ</div>
-      <input id="customerSearch" class="searchInput" placeholder="ค้นหาลูกค้า..." oninput="renderCustomerList()">
+      <div class="appNote"><b>วิธีใช้ฐานข้อมูลลูกค้า:</b> ใส่ Customer Name / T.NAME / T.DATE ด้านบน → กด <b>Save / Update Customer</b>. เมื่อต้องการใช้ซ้ำ ให้เลือกชื่อจากรายการ แล้วกด <b>Load Selected</b>.</div>
+      <label>เลือกลูกค้าที่บันทึกไว้</label>
+      <select id="customerSelect" class="customerSelect" onchange="previewCustomerRecord(this.value)"><option value="">-- เลือกลูกค้าที่บันทึกไว้ --</option></select>
+      <div class="toolbar">
+        <button class="btn blue" onclick="loadSelectedCustomer()">Load Selected</button>
+        <button class="btn gold" onclick="saveCustomer()">Update Selected</button>
+        <button class="btn red" onclick="deleteSelectedCustomer()">Delete Selected</button>
+      </div>
+      <div class="dbFields">
+        <div class="row"><div><label>Email</label><input id="dbEmail" placeholder="email ลูกค้า"></div><div><label>Tel</label><input id="dbPhone" placeholder="เบอร์โทร"></div></div>
+        <label>Address / Note ลูกค้า</label><textarea id="dbNote" placeholder="ที่อยู่ / หมายเหตุลูกค้าเพิ่มเติม"></textarea>
+      </div>
+      <input id="customerSearch" class="searchInput" placeholder="ค้นหาลูกค้า / Tour Name / Email / Tel..." oninput="renderCustomerList()">
       <div class="dbTools">
         <button class="btn slim" onclick="exportCustomers()">Backup Customers</button>
         <button class="btn slim blue" onclick="triggerImport('customers')">Restore Customers</button>
+        <button class="btn slim red" onclick="clearCustomerForm()">Clear Customer Form</button>
       </div>
+      <div id="customerStatus" class="customerStatus"></div>
       <div id="customerList" class="dbList"></div>
     </div>
 
@@ -441,7 +460,7 @@ BRANCH :CHOKCHAI4</textarea>
     </div>
 
     <div class="group"><h3>V11 / Vercel Ready</h3>
-      <div class="appNote"><b>V11 HTML App</b> เก็บข้อมูลใน Local Storage และมี Backup/Restore JSON แล้ว สามารถนำไฟล์นี้ขึ้น GitHub Pages, Cloudflare Pages หรือ Vercel แบบ Static ได้ทันที</div>
+      <div class="appNote"><b>V12 HTML App</b> เก็บข้อมูลใน Local Storage และมี Backup/Restore JSON แล้ว สามารถนำไฟล์นี้ขึ้น GitHub Pages, Cloudflare Pages หรือ Vercel แบบ Static ได้ทันที</div>
     </div>
 
     <input type="file" id="importFile" accept="application/json" style="display:none" onchange="handleImportFile(event)">
@@ -623,9 +642,9 @@ function downloadJSON(name,data){
   setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},300);
 }
 function stamp(){return new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}
-function exportCustomers(){downloadJSON('senei-customers-'+stamp()+'.json',{type:'senei-customers-v11',customers:getCustomers()})}
-function exportHistory(){downloadJSON('senei-invoice-history-'+stamp()+'.json',{type:'senei-history-v11',history:getHistory()})}
-function exportAllData(){downloadJSON('senei-invoice-app-backup-'+stamp()+'.json',{type:'senei-all-v11',current:collect(),customers:getCustomers(),history:getHistory(),seq:localStorage.getItem(SEQ_KEY)||'1'})}
+function exportCustomers(){downloadJSON('senei-customers-'+stamp()+'.json',{type:'senei-customers-v12',customers:getCustomers()})}
+function exportHistory(){downloadJSON('senei-invoice-history-'+stamp()+'.json',{type:'senei-history-v12',history:getHistory()})}
+function exportAllData(){downloadJSON('senei-invoice-app-backup-'+stamp()+'.json',{type:'senei-all-v12',current:collect(),customers:getCustomers(),history:getHistory(),seq:localStorage.getItem(SEQ_KEY)||'1'})}
 function triggerImport(mode){importMode=mode; const f=$('importFile'); if(f){f.value=''; f.click();}}
 function handleImportFile(ev){
   const file=ev.target.files&&ev.target.files[0]; if(!file)return;
@@ -672,7 +691,7 @@ function snapshotTitle(d){
 function getHistory(){try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]')}catch(e){return []}}
 function setHistory(list){localStorage.setItem(HISTORY_KEY,JSON.stringify(list));renderHistoryList()}
 function getCustomers(){try{return JSON.parse(localStorage.getItem(CUSTOMER_KEY)||'[]')}catch(e){return []}}
-function setCustomers(list){localStorage.setItem(CUSTOMER_KEY,JSON.stringify(list));renderCustomerList()}
+function setCustomers(list){localStorage.setItem(CUSTOMER_KEY,JSON.stringify((list||[]).map(normalizeCustomerRecord)));renderCustomerList()}
 function generateInvoiceNo(){
   const prefix=($('invoicePrefix')?.value||'SK').trim()||'SK';
   let seq=Number($('invoiceSeq')?.value||localStorage.getItem(SEQ_KEY)||1);
@@ -683,31 +702,107 @@ function generateInvoiceNo(){
   localStorage.setItem(SEQ_KEY,String(seq+1));
   render();
 }
-function saveCustomer(){
-  const d=collect();
-  const name=(d.customer||'').trim();
-  if(!name){alert('กรุณาใส่ Customer Name ก่อน');return}
-  let list=getCustomers();
-  const rec={id:Date.now(),customer:d.customer,tname:d.tname,tdate:d.tdate,updated:new Date().toISOString()};
-  const idx=list.findIndex(x=>(x.customer||'').trim()===name);
-  if(idx>=0) list[idx]={...list[idx],...rec,id:list[idx].id}; else list.unshift(rec);
-  setCustomers(list.slice(0,100));
-  alert('บันทึกลูกค้าแล้ว');
+function customerStatus(msg){ const el=$('customerStatus'); if(el) el.textContent=msg||''; }
+function normalizeCustomerRecord(c){
+  return {id:c.id||Date.now(),customer:c.customer||'',tname:c.tname||'',tdate:c.tdate||'',email:c.email||'',phone:c.phone||'',note:c.note||'',updated:c.updated||new Date().toISOString()}
 }
-function loadCustomer(id){
-  const c=getCustomers().find(x=>String(x.id)===String(id)); if(!c)return;
+function currentCustomerRecord(existingId){
+  const d=collect();
+  return normalizeCustomerRecord({
+    id: existingId || Date.now(),
+    customer:d.customer,
+    tname:d.tname,
+    tdate:d.tdate,
+    email:$('dbEmail')?.value||'',
+    phone:$('dbPhone')?.value||'',
+    note:$('dbNote')?.value||'',
+    updated:new Date().toISOString()
+  });
+}
+function saveCustomer(){
+  const name=($('customer').value||'').trim();
+  if(!name){alert('กรุณาใส่ Customer Name ก่อน');return}
+  let list=getCustomers().map(normalizeCustomerRecord);
+  const selectedId=$('customerSelect')?.value||'';
+  let idx= selectedId ? list.findIndex(x=>String(x.id)===String(selectedId)) : -1;
+  if(idx<0) idx=list.findIndex(x=>(x.customer||'').trim().toLowerCase()===name.toLowerCase());
+  const rec=currentCustomerRecord(idx>=0 ? list[idx].id : Date.now());
+  if(idx>=0) list[idx]={...list[idx],...rec}; else list.unshift(rec);
+  list.sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
+  setCustomers(list.slice(0,300));
+  if($('customerSelect')) $('customerSelect').value=String(rec.id);
+  customerStatus('บันทึกลูกค้าแล้ว: '+(rec.customer.split('\n')[0]||rec.customer));
+}
+function applyCustomerToForm(c){
   $('customer').value=c.customer||''; $('tname').value=c.tname||''; $('tdate').value=c.tdate||'';
+  if($('dbEmail')) $('dbEmail').value=c.email||'';
+  if($('dbPhone')) $('dbPhone').value=c.phone||'';
+  if($('dbNote')) $('dbNote').value=c.note||'';
+  if($('customerSelect')) $('customerSelect').value=String(c.id||'');
   render();
 }
+function loadCustomer(id){
+  const c=getCustomers().map(normalizeCustomerRecord).find(x=>String(x.id)===String(id));
+  if(!c){customerStatus('ไม่พบข้อมูลลูกค้านี้');return;}
+  applyCustomerToForm(c);
+  customerStatus('โหลดข้อมูลลูกค้าแล้ว: '+(c.customer.split('\n')[0]||c.customer));
+}
+function loadSelectedCustomer(){
+  const id=$('customerSelect')?.value;
+  if(!id){alert('กรุณาเลือกลูกค้าก่อน');return}
+  loadCustomer(id);
+}
+function previewCustomerRecord(id){
+  const c=getCustomers().map(normalizeCustomerRecord).find(x=>String(x.id)===String(id));
+  if(!c){clearCustomerExtraFields(false); customerStatus(''); return;}
+  if($('dbEmail')) $('dbEmail').value=c.email||'';
+  if($('dbPhone')) $('dbPhone').value=c.phone||'';
+  if($('dbNote')) $('dbNote').value=c.note||'';
+  customerStatus('เลือกแล้ว: '+(c.customer.split('\n')[0]||c.customer)+' — กด Load Selected เพื่อดึงเข้าใบแจ้งหนี้');
+}
 function deleteCustomer(id){
-  if(!confirm('ลบลูกค้านี้?'))return;
+  const c=getCustomers().find(x=>String(x.id)===String(id));
+  if(!c)return;
+  if(!confirm('ลบลูกค้านี้?\n'+((c.customer||'').split('\n')[0]||'')))return;
   setCustomers(getCustomers().filter(x=>String(x.id)!==String(id)));
+  clearCustomerExtraFields(false);
+  customerStatus('ลบข้อมูลลูกค้าแล้ว');
+}
+function deleteSelectedCustomer(){
+  const id=$('customerSelect')?.value;
+  if(!id){alert('กรุณาเลือกลูกค้าก่อน');return}
+  deleteCustomer(id);
+}
+function clearCustomerExtraFields(includeSelect=true){
+  if($('dbEmail')) $('dbEmail').value='';
+  if($('dbPhone')) $('dbPhone').value='';
+  if($('dbNote')) $('dbNote').value='';
+  if(includeSelect && $('customerSelect')) $('customerSelect').value='';
+}
+function clearCustomerForm(){
+  clearCustomerExtraFields(true);
+  if($('customerSearch')) $('customerSearch').value='';
+  customerStatus('ล้างฟอร์มฐานข้อมูลลูกค้าแล้ว');
+  renderCustomerList();
 }
 function renderCustomerList(){
   const el=$('customerList'); if(!el)return;
-  const list=getCustomers();
-  if(!list.length){el.innerHTML='<div class="dbItem"><span>ยังไม่มีลูกค้าที่บันทึก</span></div>';return}
-  el.innerHTML=list.map(c=>`<div class="dbItem"><div><b>${esc((c.customer||'').split('\n')[0])}</b><br><span>${esc(c.tname||'')} ${esc(c.tdate||'')}</span></div><div class="miniBtns"><button class="miniBtn blue" onclick="loadCustomer(${c.id})">Load</button><button class="miniBtn red" onclick="deleteCustomer(${c.id})">Del</button></div></div>`).join('');
+  const select=$('customerSelect');
+  const currentSelected=select?.value||'';
+  const q=($('customerSearch')?.value||'').trim().toLowerCase();
+  const list=getCustomers().map(normalizeCustomerRecord);
+  const filtered=list.filter(c=>{
+    const hay=[c.customer,c.tname,c.tdate,c.email,c.phone,c.note].join(' ').toLowerCase();
+    return !q || hay.includes(q);
+  });
+  if(select){
+    select.innerHTML='<option value="">-- เลือกลูกค้าที่บันทึกไว้ --</option>'+list.map(c=>`<option value="${c.id}">${esc((c.customer||'').split('\n')[0]||'Unnamed')} ${c.tname?' — '+esc(c.tname):''}</option>`).join('');
+    if(list.some(c=>String(c.id)===String(currentSelected))) select.value=currentSelected;
+  }
+  if(!list.length){el.innerHTML='<div class="dbItem"><span>ยังไม่มีลูกค้าที่บันทึก</span><small>ใส่ Customer Name ด้านบน แล้วกด Save / Update Customer</small></div>';return}
+  if(!filtered.length){el.innerHTML='<div class="dbItem"><span>ไม่พบลูกค้าที่ค้นหา</span></div>';return}
+  const selected=select?.value||'';
+  el.innerHTML=filtered.map(c=>`<div class="dbItem ${String(c.id)===String(selected)?'active':''}"><div onclick="previewCustomerRecord(${c.id})" style="cursor:pointer"><b>${esc((c.customer||'').split('\n')[0]||'Unnamed')}</b><br><span>${esc(c.tname||'')} ${esc(c.tdate||'')}</span><small>${esc([c.email,c.phone].filter(Boolean).join(' / '))}</small></div><div class="miniBtns"><button class="miniBtn blue" onclick="loadCustomer(${c.id})">Load</button><button class="miniBtn gold" onclick="previewCustomerRecord(${c.id}); if($('customerSelect')) $('customerSelect').value='${c.id}'">Select</button><button class="miniBtn red" onclick="deleteCustomer(${c.id})">Del</button></div></div>`).join('');
 }
 function saveInvoiceHistory(){
   const d=collect();
