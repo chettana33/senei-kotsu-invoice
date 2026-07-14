@@ -1,38 +1,30 @@
 # SENEI KOTSU Invoice Management System
 
-Production web application for creating invoices, rendering one-page A4 documents, tracking payments, and backing up local business data.
+Production web application for creating invoices, rendering one-page A4 documents, tracking payments, issuing receipts, and reviewing business reports.
 
 ## Current production
 
-- Version: **SENEI Flow V13.2 Payment Receipt**
+- Version: **SENEI Flow V13.3 Reports**
 - Production URL: https://senei-kotsu-invoice.chettana33.chatgpt.site
 - Entry point: `index.html`
-- A4 renderer: `senei_kotsu_a4_renderer_v1.html`
+- Invoice renderer: `senei_kotsu_a4_renderer_v1.html`
 - Receipt renderer: `senei_kotsu_receipt_renderer_v1.html`
 
 ## Main features
 
-- Invoice creation and customer database
-- Invoice history and running invoice number
-- Responsive A4 preview and Print / Save PDF
-- Deposit, Final, Partial, Full, and Adjustment payments
-- JPY and THB payment tracking
-- Deposit amount auto-fill with editable received amount
-- Stable Payment Receipt numbering and one-page A4 receipts
+- Invoice creation, customer database and Invoice History
+- Responsive one-page A4 Invoice preview and Print / Save PDF
+- Deposit, Final, Partial, Full and Adjustment payments
+- JPY and THB Payment Tracking
+- Stable Payment Receipt numbers and one-page A4 receipts
+- Read-only Reports & Payment Summary
+- Invoice status, outstanding balance and monthly payment activity
+- CSV report export for Excel
 - Backup All / Restore All
 
 ## Data and privacy
 
-The application stores invoices, customers, running numbers, and payments in the browser's Local Storage. Repository source code does **not** contain live customer data.
-
-Never commit exported Backup JSON files, customer lists, invoices, payment exports, credentials, or `.env` files.
-
-## Release workflow
-
-- `main`: approved production source only
-- Feature work: use a `feature/...` branch
-- Test Payment, Backup/Restore, responsive layout, and A4 Print before merging
-- Create a release tag after production acceptance
+Business data is stored in the browser's Local Storage. Repository source code does not contain live customer data. Never commit exported Backup JSON, customer data, credentials or environment files.
 
 ## Backup reminder
 

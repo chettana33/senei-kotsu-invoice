@@ -1,17 +1,22 @@
-# Customer and transaction exports
-*.json
+# Customer and operational data
 backups/
+backup/
 exports/
+*backup*.json
+*payment*.json
+*customer*.json
+*invoice-data*.json
+*.local.json
 
-# Local environment and editor files
+# Credentials and local settings
 .env
 .env.*
+!.env.example
+*.pem
+*.key
+
+# OS and editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-
-# Temporary files
-*.tmp
-*.log
-~$*
