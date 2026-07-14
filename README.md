@@ -4,10 +4,11 @@ Production web application for creating invoices, rendering one-page A4 document
 
 ## Current production
 
-- Version: **SENEI Flow V13.1 Payment**
+- Version: **SENEI Flow V13.2 Payment Receipt**
 - Production URL: https://senei-kotsu-invoice.chettana33.chatgpt.site
 - Entry point: `index.html`
 - A4 renderer: `senei_kotsu_a4_renderer_v1.html`
+- Receipt renderer: `senei_kotsu_receipt_renderer_v1.html`
 
 ## Main features
 
@@ -17,6 +18,7 @@ Production web application for creating invoices, rendering one-page A4 document
 - Deposit, Final, Partial, Full, and Adjustment payments
 - JPY and THB payment tracking
 - Deposit amount auto-fill with editable received amount
+- Stable Payment Receipt numbering and one-page A4 receipts
 - Backup All / Restore All
 
 ## Data and privacy

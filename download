@@ -1,0 +1,17 @@
+# Customer and transaction exports
+*.json
+backups/
+exports/
+
+# Local environment and editor files
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+~$*
