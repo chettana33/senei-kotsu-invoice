@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SENEI KOTSU — Payment Receipt</title>
+<style>
+:root{--navy:#173154;--blue:#2458a6;--gold:#b88928;--ink:#172033;--muted:#526074;--line:#aebdce}
+*{box-sizing:border-box}html,body{margin:0;background:#27313d;font-family:Tahoma,Arial,sans-serif;color:var(--ink)}
+.toolbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 18px;background:#fff;border-bottom:1px solid #d7dee8}.toolbar strong{color:var(--navy)}.toolbar span{font-size:12px;color:#667085}.toolbar button{border:0;border-radius:9px;padding:9px 15px;background:var(--navy);color:#fff;font:700 13px Tahoma;cursor:pointer}
+.canvas{min-height:calc(100vh - 56px);padding:22px;display:flex;justify-content:center;align-items:flex-start}.page{width:210mm;height:297mm;overflow:hidden;background:#fff;box-shadow:0 18px 55px rgba(0,0,0,.35);padding:12mm}.content{width:100%;transform-origin:top left}
+.head{display:flex;align-items:center;gap:5mm;padding-bottom:4mm;border-bottom:1mm solid var(--navy)}.head img{width:28mm;height:auto}.company{display:grid;gap:.7mm}.company b{font-size:17pt;color:var(--navy)}.company span{font-size:7.5pt;color:#42526a}
+.title{display:flex;justify-content:space-between;align-items:flex-end;padding:7mm 0 5mm}.title h1{margin:0;color:var(--navy);font-size:25pt}.title h1 span{display:block;margin-top:1mm;font-size:10pt;letter-spacing:.8mm}.receiptNo{text-align:right}.receiptNo small{display:block;color:var(--muted);font-size:8pt;font-weight:700}.receiptNo b{font-size:14pt;color:var(--navy)}
+.info{display:grid;grid-template-columns:1.35fr 1fr;gap:3mm}.box{border:2px solid var(--line);border-radius:2.5mm;background:#f8fafc;padding:4mm}.box small{display:block;margin-bottom:1.5mm;color:var(--muted);font-size:8pt;font-weight:700}.box b{font-size:11pt;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}.lines{display:grid;gap:2mm}.line{display:grid;grid-template-columns:34mm 1fr;gap:2mm;align-items:baseline}.line span{font-size:8pt;font-weight:700;color:var(--muted)}.line b{font-size:10pt;white-space:normal}
+.amount{margin:5mm 0;border:2.5px solid var(--navy);border-left:3mm solid var(--gold);border-radius:2.5mm;padding:5mm 6mm;background:#fff}.amount small{display:block;color:var(--muted);font-size:9pt;font-weight:700}.amount strong{display:block;margin-top:2mm;color:var(--navy);font-size:28pt;text-align:right}
+.detail{width:100%;border-collapse:collapse;margin-top:4mm}.detail th,.detail td{border:1.5px solid var(--line);padding:3mm;font-size:9pt;vertical-align:top}.detail th{width:34%;background:#eaf0f6;color:var(--navy);text-align:left}.detail td{overflow-wrap:anywhere}
+.statement{margin-top:5mm;padding:4mm;border:1.5px solid #d7c28d;border-radius:2mm;background:#fffaf0;font-size:9pt;line-height:1.6;color:#4b3c1d}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:12mm;margin-top:34mm}.sign div{padding-top:2.5mm;border-top:1px solid #667085;text-align:center;font-size:8pt;color:var(--muted)}
+.foot{margin-top:10mm;padding-top:3mm;border-top:1px solid #d7dee8;text-align:center;color:#667085;font-size:7pt}.empty{padding:40px;text-align:center;color:#667085}
+@page{size:A4 portrait;margin:0}@media print{html,body{width:210mm;height:297mm;background:#fff}.toolbar{display:none!important}.canvas{display:block;min-height:0;padding:0}.page{width:210mm;height:297mm;margin:0;padding:12mm;box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="toolbar"><div><strong>SENEI KOTSU · Payment Receipt</strong><br><span id="status">Waiting for Payment data…</span></div><button type="button" onclick="window.print()">Print / Save PDF</button></div>
+<main class="canvas"><section class="page"><div class="content" id="content"><div class="empty">กรุณาเปิด Receipt จาก Payment Ledger</div></div></section></main>
+<script>
+const $=id=>document.getElementById(id);const fmt=n=>Math.round(Number(n||0)).toLocaleString('en-US');const esc=s=>String(s??'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));const nl=s=>esc(s).replace(/\n/g,'<br>');
+function dateText(v){if(!v)return '—';const d=new Date(v+'T00:00:00');return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(',','')}
+function renderPayload(payload){const p=payload.payment||{},i=payload.invoice||{},logo=payload.logo||'',currency=p.currency==='THB'?'THB':'JPY';
+$('content').innerHTML=`<header class="head">${logo?`<img src="${logo}" alt="SENEI KOTSU">`:''}<div class="company"><b>SENEI KOTSU Co., Ltd</b><span>JAPAN ASSOCIATION OF TRAVEL AGENTS MEMBER</span><span>TOKYO GOVERNOR'S REGISTERED TRAVEL AGENCY NO. 2-7928 · 〒160-0022</span><span>4-1-22 SHINJUKU, SHINJUKU-KU, TOKYO · TEL 03-6709-8156</span></div></header><section class="title"><h1>ใบรับชำระเงิน<span>PAYMENT RECEIPT · 領収書</span></h1><div class="receiptNo"><small>RECEIPT NO.</small><b>${esc(p.receiptNo)||'—'}</b></div></section><section class="info"><div class="box"><small>RECEIVED FROM / ลูกค้า</small><b>${nl(i.customer)||esc(p.customer)||'—'}</b></div><div class="box lines"><div class="line"><span>PAYMENT DATE</span><b>${dateText(p.paymentDate)}</b></div><div class="line"><span>INVOICE NO.</span><b>${esc(i.invoiceNo||p.invoiceNo)||'—'}</b></div></div></section><section class="amount"><small>AMOUNT RECEIVED / จำนวนเงินที่ได้รับ</small><strong>${currency} ${fmt(p.amount)}</strong></section><table class="detail"><tr><th>PAYMENT TYPE</th><td>${esc(p.type)||'—'}</td></tr><tr><th>PAYMENT METHOD</th><td>${esc(p.method)||'—'}</td></tr><tr><th>REFERENCE</th><td>${esc(p.reference)||'—'}</td></tr><tr><th>TOUR NAME</th><td>${esc(i.tname)||'—'}</td></tr><tr><th>TOUR DATE</th><td>${esc(i.tdate)||'—'}</td></tr><tr><th>NO. OF PAX</th><td>${esc(i.pax)||'—'}</td></tr><tr><th>NOTE</th><td>${nl(p.note)||'—'}</td></tr></table><div class="statement">ได้รับชำระเงินตามรายละเอียดข้างต้นเรียบร้อยแล้ว · Payment received for the invoice referenced above.</div><section class="sign"><div>RECEIVED BY / ผู้รับเงิน</div><div>AUTHORIZED SIGNATURE / ผู้มีอำนาจลงนาม</div></section><footer class="foot">This receipt was generated from SENEI KOTSU Invoice Management System.</footer>`;
+$('status').textContent=`Ready · ${p.receiptNo||'Receipt'} · ${currency} ${fmt(p.amount)}`}
+window.addEventListener('message',e=>{if(e.data?.type==='senei-render-receipt')renderPayload(e.data.payload)});window.opener?.postMessage({type:'senei-receipt-renderer-ready'},'*');try{const saved=sessionStorage.getItem('senei_receipt_payload_v1');if(saved)renderPayload(JSON.parse(saved))}catch(e){}
+</script>
+</body>
+</html>

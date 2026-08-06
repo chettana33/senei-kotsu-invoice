@@ -13,10 +13,10 @@ Production web application for creating invoices, rendering one-page A4 document
 ## Development candidate
 
 - Version: **V13.4 Outstanding/Aging Candidate**
-- Status: Candidate only; not Production and not present as executable source in this repository
+- Status: Candidate only; not Production. Recovered exact artifact at `candidates/V13.4-aging/`
 - Recorded features: customer outstanding summary, aging buckets, selectable As-of Date and Aging CSV export
 - Recorded validation: Aging 14/14 and Reports regression 12/12
-- Next gate: recover/import the exact candidate artifact, verify checksum, complete owner acceptance and approve promotion explicitly
+- Next gate: complete owner acceptance on the owner PC, then approve promotion explicitly
 
 Start continuity work at [`START_HERE.md`](START_HERE.md). The production entry point remains V13.3 until the owner approves a later release.
 

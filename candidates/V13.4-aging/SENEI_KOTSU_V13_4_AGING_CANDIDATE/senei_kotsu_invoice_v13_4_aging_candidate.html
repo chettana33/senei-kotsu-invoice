@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SENEI KOTSU Invoice — SENEI Flow V13.4 Aging Candidate</title>
+<style>
+:root{
+  --ink:#0f172a;--line:#111827;--muted:#64748b;--soft:#f6f7fb;--card:#ffffff;
+  --gold:#b88928;--gold2:#f4df9d;--red:#d60000;--blue:#0047d9;--paper-w:1120px;
+  --doc-font:12px;--company-font:12px;--title-font:21px;--table-font:12px;--small-font:9px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif;background:radial-gradient(circle at top left,#fff7df 0,#f8fafc 28%,#eef2f7 100%);color:var(--ink)}
+.app{display:grid;grid-template-columns:450px 1fr;height:100vh;gap:16px;padding:16px}
+.panel,.previewWrap{background:rgba(255,255,255,.96);border:1px solid rgba(184,137,40,.20);border-radius:22px;box-shadow:0 18px 42px rgba(15,23,42,.13);overflow:auto}
+.panel{padding:16px}
+.previewWrap{padding:18px;background:#f8fafc}
+.panel h2{margin:0 0 12px;font-size:22px}
+.version{display:inline-block;background:linear-gradient(135deg,#111827,#374151);color:white;border-radius:999px;padding:4px 10px;font-size:12px;margin-left:8px}
+.group{border:1px solid #eadbb9;border-radius:16px;padding:12px;margin:0 0 12px;background:linear-gradient(180deg,#ffffff,#fffdf8)}
+.group h3{margin:0 0 10px;font-size:14px;background:linear-gradient(135deg,#111827,#2c2414 55%,#b88928);color:#fff;padding:9px 11px;border-radius:11px;letter-spacing:.2px}
+label{font-weight:800;font-size:12px;display:block;margin-top:8px;color:#374151}
+input,textarea,select{width:100%;padding:8px 9px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px;background:#fff}
+textarea{min-height:66px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.btns{display:flex;flex-wrap:wrap;gap:8px;position:sticky;bottom:0;background:#fff;padding-top:10px;border-top:1px solid #eee}
+.btn{border:0;border-radius:11px;padding:9px 12px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,#111827,#334155);color:#fff;box-shadow:0 6px 14px rgba(15,23,42,.14)}
+.btn.gold{background:#b99029}.btn.red{background:#b30000}.btn.gray{background:#64748b}.btn.blue{background:#1d4ed8}
+.itemBox{border:1px dashed #cbd5e1;border-radius:12px;padding:10px;margin-bottom:9px;background:#f8fafc}
+.small{font-size:12px;color:#64748b}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.toolbar input[type=color]{width:48px;padding:2px;height:36px}
+.toolbar select{width:92px}
+.hr{height:1px;background:#e5e7eb;margin:10px 0}
+
+.paper{width:var(--paper-w);min-height:1540px;background:linear-gradient(180deg,#fff,#fffdf8);margin:auto;padding:22px;border:1.5px solid var(--line);box-shadow:0 16px 44px rgba(15,23,42,.18);font-size:var(--doc-font);line-height:1.18;color:#111;border-radius:8px}
+.paper *{box-sizing:border-box}
+.top{display:grid;grid-template-columns:170px 1fr;align-items:center;border:1.5px solid #111;border-bottom:0;padding:10px;background:linear-gradient(90deg,#fff,#fff8e6)}
+.logo{width:138px;max-height:92px;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.14))}
+.company{font-weight:900;font-size:var(--company-font);line-height:1.12;letter-spacing:.05px}
+.titleBar{background:linear-gradient(90deg,#1f2937,#b88928,#1f2937);color:#fff;text-align:center;font-weight:900;font-size:var(--title-font);padding:7px;border:1.5px solid #111;letter-spacing:3px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+.infoGrid{display:grid;grid-template-columns:1.05fr 1fr;gap:72px;margin-top:0}
+.box{border:2px solid #111;background:#fff}
+.boxHead{background:linear-gradient(90deg,#e7e5e4,#f8fafc,#eadbb9);border-bottom:1.5px solid #111;text-align:center;font-weight:900;padding:5px}
+.customerName{height:82px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:calc(var(--doc-font) + 5px);text-align:center;padding:8px}
+.tripTable{width:100%;border-collapse:collapse;font-weight:900}
+.tripTable td{border:1.5px solid #111;padding:5px;font-size:var(--table-font)}
+.tripTable td:first-child{width:135px;background:#f9fafb}
+.issue{display:grid;grid-template-columns:210px 190px 1fr;margin-top:0}
+.issue div{border:1.5px solid #111;border-top:0;padding:5px;font-weight:900;font-size:var(--table-font)}
+.issue div:nth-child(1),.issue div:nth-child(2){background:#c9c9c9}
+.notice{text-align:center;color:red;font-weight:900;border:1.5px solid #111;padding:7px;margin-top:14px;white-space:pre-wrap;background:#fffdfd;font-size:var(--table-font)}
+.invoiceTable{width:100%;border-collapse:collapse;table-layout:fixed}
+.invoiceTable th{background:linear-gradient(180deg,#e5e7eb,#c4b5a0);border:1.5px solid #111;padding:5px;font-weight:900;font-size:var(--table-font)}
+.invoiceTable td{border-left:1.5px solid #111;border-right:1.5px solid #111;padding:6px;vertical-align:top;font-size:var(--table-font)}
+.invoiceTable tbody tr:first-child td{padding-top:24px}
+.invoiceTable tbody tr:last-child td{padding-bottom:24px}
+.dateCol{width:150px;text-align:right}
+.detailCol{width:auto}
+.netCol{width:140px;text-align:right}
+.noCol{width:80px;text-align:center}
+.totalCol{width:220px;text-align:right}
+.detailText{white-space:pre-wrap}
+.yellow{background:linear-gradient(90deg,#fff200,#fff7a8,#fff200);text-align:center;border:1.5px solid #111;padding:5px;font-size:var(--table-font);font-weight:700}
+.totalGrid{display:grid;grid-template-columns:150px 1fr 140px 80px 220px;border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111}
+.totalGrid>div{border-right:2px solid #111;min-height:54px;padding:8px}
+.totalGrid>div:last-child{border-right:0}
+.totalLabel{color:red;font-weight:900;font-style:italic;text-align:center}
+.moneyRed{color:red;font-weight:900;text-decoration:underline;text-align:right}
+.moneyBlue{color:blue;font-weight:900;text-decoration:underline;text-align:right}
+.payPlan{display:grid;grid-template-columns:150px 1fr 140px 80px 220px;border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111}
+.payPlan>div{border-right:2px solid #111;padding:6px 8px;min-height:32px}
+.payPlan>div:last-child{border-right:0}
+.payText{color:red;font-weight:900;text-align:center}
+.thbMini{color:blue;font-weight:900;text-align:right}
+.rate{border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111;padding:6px;font-weight:900;min-height:44px}
+.bankGrid{display:grid;grid-template-columns:1fr 1fr 220px;border-left:2px solid #111;border-right:2px solid #111;border-bottom:2px solid #111}
+.bankGrid>div{min-height:92px;border-right:2px solid #111;padding:8px;font-weight:900}
+.bankGrid>div:last-child{border-right:0}
+.cancel{border-left:1.5px solid #111;border-right:1.5px solid #111;border-bottom:1.5px solid #111;padding:8px;color:red;font-weight:900;white-space:pre-wrap;font-size:var(--small-font)}
+.blueText{color:blue;font-weight:900}.redText{color:red;font-weight:900}
+@media print{
+  body{background:white}
+  .app{display:block;height:auto;padding:0}
+  .panel{display:none}
+  .previewWrap{box-shadow:none;border-radius:0;padding:0;overflow:visible;background:white}
+  .paper{box-shadow:none;margin:0 auto;border:1.5px solid #111;width:1120px;min-height:auto;page-break-after:auto;border-radius:0}
+  @page{size:A4 portrait;margin:7mm}
+  .invoiceTable tr,.bankGrid,.totalGrid,.payPlan,.notice{break-inside:avoid;page-break-inside:avoid}
+}
+
+/* ===== V4 Executive UI / Print Accuracy / Stable Detail Notes ===== */
+html{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+body{background:
+  radial-gradient(circle at 12% 0%, rgba(244,223,157,.32), transparent 26%),
+  radial-gradient(circle at 100% 10%, rgba(184,137,40,.16), transparent 28%),
+  linear-gradient(135deg,#0b0f19 0%,#111827 32%,#e8edf5 32.2%,#f8fafc 100%) !important;}
+.app{grid-template-columns:470px 1fr;gap:18px;padding:18px;}
+.panel{background:linear-gradient(180deg,rgba(17,24,39,.98),rgba(15,23,42,.96));border:1px solid rgba(244,223,157,.30);box-shadow:0 26px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.08);color:#f8fafc;}
+.previewWrap{background:linear-gradient(180deg,#eef2f7,#dce3ed);border:1px solid rgba(15,23,42,.08);box-shadow:0 20px 60px rgba(0,0,0,.24);}
+.panel h2{color:#fff;letter-spacing:.2px;font-size:24px;}
+.version{background:linear-gradient(135deg,#b88928,#f4df9d);color:#111827;box-shadow:0 0 0 1px rgba(255,255,255,.15) inset;}
+.group{background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.035));border:1px solid rgba(244,223,157,.22);box-shadow:inset 0 1px 0 rgba(255,255,255,.08);}
+.group h3{background:linear-gradient(135deg,#070b14,#263248 56%,#b88928);border:1px solid rgba(244,223,157,.18);}
+label{color:#f4df9d;}
+input,textarea,select{background:rgba(255,255,255,.96);border:1px solid rgba(244,223,157,.28);box-shadow:0 1px 0 rgba(255,255,255,.08);}
+.small{color:#cbd5e1;}.hr{background:rgba(244,223,157,.20)}
+.btn{background:linear-gradient(135deg,#0f172a,#273142);border:1px solid rgba(244,223,157,.22);box-shadow:0 8px 20px rgba(0,0,0,.28);}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.08)}
+.btn.gold{background:linear-gradient(135deg,#9c6b13,#f4df9d);color:#111}.btn.red{background:linear-gradient(135deg,#7f0000,#dc2626)}.btn.gray{background:linear-gradient(135deg,#334155,#64748b)}.btn.blue{background:linear-gradient(135deg,#0b3b9e,#2563eb)}
+.itemBox{background:rgba(255,255,255,.075);border:1px dashed rgba(244,223,157,.35)}
+.btns{background:linear-gradient(180deg,rgba(15,23,42,.80),#0f172a);border-top:1px solid rgba(244,223,157,.25)}
+.paper{background:#fffdf8;border:2px solid #111;border-radius:12px;box-shadow:0 22px 65px rgba(0,0,0,.28)}
+.top{background:linear-gradient(90deg,#fff 0%,#fff9ea 58%,#f1dfb1 100%)}
+.titleBar{background:linear-gradient(90deg,#111827 0%,#b88928 50%,#111827 100%)}
+.boxHead,.invoiceTable th{background:linear-gradient(180deg,#f7f3ea,#c9b184)!important;color:#111!important;}
+.notice{background:#fffafa!important;color:#d60000!important;}
+.yellow{background:#fff200!important;color:#111!important;}
+.detailText{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;line-height:1.18;}
+.excRow td{border-top:0;border-bottom:0!important;padding-top:8px!important;padding-bottom:12px!important;}
+.excNote{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;color:#d60000;font-weight:900;line-height:1.2;display:block;max-width:100%;}
+.invoiceTable td{overflow-wrap:anywhere;}
+.netCol,.noCol,.totalCol{white-space:nowrap;}
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;}
+  body{background:#fff!important;}
+  .paper{background:#fffdf8!important;box-shadow:none!important;border-radius:0!important;}
+  .top{background:linear-gradient(90deg,#fff 0%,#fff9ea 58%,#f1dfb1 100%)!important;}
+  .titleBar{background:linear-gradient(90deg,#111827 0%,#b88928 50%,#111827 100%)!important;color:#fff!important;}
+  .boxHead,.invoiceTable th{background:linear-gradient(180deg,#f7f3ea,#c9b184)!important;color:#111!important;}
+  .notice{background:#fffafa!important;color:#d60000!important;}
+  .yellow{background:#fff200!important;color:#111!important;}
+  .moneyRed,.redText,.excNote,.cancel{color:#d60000!important;}
+  .moneyBlue,.blueText,.thbMini{color:#0047d9!important;}
+}
+
+
+
+/* ===== V5 Rebuilt Stable Invoice Grid (no table-collapse, no colspan breakage) ===== */
+:root{--invoice-cols:minmax(90px,13%) minmax(0,1fr) minmax(86px,12%) minmax(52px,7%) minmax(145px,18%);}
+.invoiceTable{display:none!important;}
+.invoiceGrid{width:100%;display:block;border-left:2px solid #111;border-top:2px solid #111;background:#fff;overflow:hidden;}
+.invoiceGridHeader,.invoiceRow{display:grid;grid-template-columns:var(--invoice-cols);align-items:stretch;width:100%;}
+.invoiceGridHeader>div{background:linear-gradient(180deg,#f7f3ea,#c9b184)!important;color:#111!important;font-weight:900;text-align:center;padding:6px 5px;border-right:2px solid #111;border-bottom:2px solid #111;font-size:var(--table-font);line-height:1.1;min-width:0;}
+.invoiceGridHeader>div:last-child,.invoiceRow>div:last-child{border-right:0;}
+.invoiceRow{min-height:58px;}
+.invoiceRow>div{border-right:2px solid #111;border-bottom:0;padding:8px 6px;vertical-align:top;font-size:var(--table-font);line-height:1.18;min-width:0;overflow:hidden;}
+.invoiceRows{border-bottom:2px solid #111;}
+.invoiceRows .invoiceRow:first-child>div{padding-top:26px;}
+.invoiceRows .invoiceRow:last-child>div{padding-bottom:26px;}
+.dateCell{text-align:right;white-space:pre-wrap;overflow-wrap:break-word;}
+.detailCell{text-align:left;}
+.netCell,.totalCell{text-align:right;white-space:nowrap;}
+.noCell{text-align:center;white-space:nowrap;}
+.detailText{display:block;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;line-height:1.18;max-width:100%;}
+.excOnly{min-height:auto;}
+.excOnly .dateCell{border-right:2px solid #111;}
+.excOnly .detailCell{grid-column:2 / span 4;border-right:0;padding-top:14px!important;padding-bottom:14px!important;}
+.excNote{display:block;color:red!important;font-weight:900;white-space:pre-wrap;overflow-wrap:break-word;word-break:normal;max-width:100%;}
+.totalGrid,.payPlan{grid-template-columns:var(--invoice-cols)!important;border-left:2px solid #111!important;border-right:2px solid #111!important;}
+.bankGrid{border-left:2px solid #111!important;border-right:2px solid #111!important;}
+@media print{
+  .invoiceGrid,.invoiceGridHeader>div,.invoiceRow>div,.yellow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel,.notice,.titleBar,.boxHead{
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;
+  }
+  .invoiceRow{break-inside:avoid;page-break-inside:avoid;}
+  .invoiceGrid{break-inside:auto;page-break-inside:auto;}
+}
+
+
+
+/* ===== V6 New Stable Accounting Table =====
+   Rebuilt from zero: no colspan, every row always has 5 real cells.
+   Font-size changes only resize content; column borders remain stable. */
+:root{
+  --invoice-cols: 12.5% minmax(0,1fr) 12% 7% 18%;
+}
+.invoiceGrid{
+  width:100%;
+  display:block;
+  border:2px solid #111;
+  border-bottom:0;
+  background:#fffef9;
+  overflow:visible;
+}
+.invoiceGridHeader,.invoiceRow{
+  display:grid;
+  grid-template-columns:var(--invoice-cols);
+  width:100%;
+  align-items:stretch;
+}
+.invoiceGridHeader>div{
+  min-width:0;
+  padding:7px 6px;
+  border-right:2px solid #111;
+  border-bottom:2px solid #111;
+  background:linear-gradient(180deg,#fff7dc 0%,#d9bc72 100%)!important;
+  font-weight:900;
+  text-align:center;
+  font-size:var(--table-font);
+  line-height:1.05;
+}
+.invoiceGridHeader>div:last-child{border-right:0;}
+.invoiceRows{border-bottom:2px solid #111;}
+.invoiceRow{min-height:68px;}
+.invoiceRow>div{
+  min-width:0;
+  padding:9px 7px;
+  border-right:2px solid #111;
+  border-bottom:1px solid rgba(17,17,17,.12);
+  font-size:var(--table-font);
+  line-height:1.18;
+  overflow-wrap:break-word;
+  word-break:normal;
+  background:#fffef9;
+}
+.invoiceRow>div:last-child{border-right:0;}
+.invoiceRows .invoiceRow:last-child>div{border-bottom:0;}
+.dateCell{text-align:right;white-space:pre-wrap;}
+.detailCell{text-align:left;}
+.netCell,.totalCell{text-align:right;white-space:nowrap;}
+.noCell{text-align:center;white-space:nowrap;}
+.detailText,.excNote{display:block;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;max-width:100%;}
+.excOnly{min-height:auto;}
+.excOnly>div{padding-top:12px!important;padding-bottom:14px!important;background:#fffef9!important;}
+.excOnly .detailCell{grid-column:auto!important;border-right:2px solid #111!important;}
+.excOnly .excNote{color:#d60000!important;font-weight:900;line-height:1.22;}
+.yellow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel{border-left:2px solid #111!important;border-right:2px solid #111!important;}
+.yellow{border-top:0!important;border-bottom:2px solid #111!important;}
+.totalGrid,.payPlan{grid-template-columns:var(--invoice-cols)!important;}
+.totalGrid>div,.payPlan>div{border-right:2px solid #111!important;}
+.totalGrid>div:last-child,.payPlan>div:last-child{border-right:0!important;}
+.rate,.bankGrid{border-bottom:2px solid #111!important;}
+.cancel{border-bottom:2px solid #111!important;}
+@media print{
+  .invoiceGrid{border-color:#111!important;background:#fffef9!important;}
+  .invoiceGridHeader>div{background:linear-gradient(180deg,#fff7dc 0%,#d9bc72 100%)!important;color:#111!important;}
+  .invoiceRow>div{background:#fffef9!important;color:#111!important;}
+  .invoiceRow{break-inside:avoid;page-break-inside:avoid;}
+}
+
+
+/* ===== V7 Print A4 + Multiline Customer + Vertical Center Fix ===== */
+.customerInput{min-height:54px}
+.customerName{white-space:pre-wrap;line-height:1.22;min-height:82px;height:auto}
+.rate{display:grid;grid-template-columns:1fr auto;align-items:center;gap:10px;line-height:1.25}
+.rate .rateMain{display:flex;align-items:center;min-height:28px}
+.rate .rateAmount{display:flex;align-items:center;justify-content:flex-end;min-height:28px;float:none!important}
+.totalGrid>div,.payPlan>div{display:flex;align-items:center}
+.totalLabel,.payText{justify-content:center}
+.moneyRed,.moneyBlue,.thbMini{justify-content:flex-end}
+@media print{
+  @page{size:A4 portrait;margin:6mm}
+  html,body{width:210mm;min-height:297mm;background:#fff!important}
+  .app{display:block!important;height:auto!important;padding:0!important;margin:0!important}
+  .panel{display:none!important}
+  .previewWrap{display:block!important;width:100%!important;padding:0!important;margin:0!important;background:#fff!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+  .paper{
+    width:198mm!important;
+    max-width:198mm!important;
+    min-height:285mm!important;
+    margin:0 auto!important;
+    padding:6mm!important;
+    border:1.2px solid #111!important;
+    box-shadow:none!important;
+    border-radius:0!important;
+    transform:none!important;
+    font-size:var(--doc-font)!important;
+  }
+  .top{grid-template-columns:34mm 1fr!important;padding:4mm!important}
+  .logo{width:30mm!important;max-height:20mm!important}
+  .infoGrid{grid-template-columns:1fr 1fr!important;gap:18mm!important}
+  .invoiceGrid,.yellow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel,.notice,.titleBar,.top,.box,.tripTable td,.issue div{
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important;
+  }
+  .invoiceGrid{break-inside:auto!important;page-break-inside:auto!important}
+  .invoiceRow,.totalGrid,.payPlan,.rate,.bankGrid,.cancel,.notice{break-inside:avoid!important;page-break-inside:avoid!important}
+}
+
+
+
+/* ===== V8 Responsive Preview + Clean Canvas + Item Reorder ===== */
+.previewWrap{position:relative;}
+.previewScale{width:var(--paper-w); margin:0 auto; transform-origin:top center; transition:transform .16s ease;}
+.previewWrap .paper{box-shadow:none!important;border:0!important;border-radius:0!important;}
+.paper{transition:font-size .12s ease;}
+.itemActions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.itemActions .btn{padding:7px 9px;font-size:12px;border-radius:9px}
+.itemBox{touch-action:manipulation}
+@media (max-width:1180px){
+  .app{grid-template-columns:minmax(330px,420px) 1fr!important;padding:10px!important;gap:10px!important}
+}
+@media (max-width:860px){
+  .app{display:block!important;height:auto!important;overflow:auto!important}
+  .panel,.previewWrap{height:auto;max-height:none;margin-bottom:12px}
+  .previewWrap{overflow:auto}
+}
+@media print{
+  .previewScale{width:auto!important;transform:none!important;margin:0!important;}
+  .previewWrap .paper{border:1.2px solid #111!important;}
+}
+
+
+
+/* ===== V9 Auto Days + Bottom Box Alignment ===== */
+.checkline{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#334155;margin:6px 0 10px}
+.bankGrid>div{font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif!important;font-size:var(--small-font)!important;line-height:1.22!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;padding:10px!important}
+.bankGrid>div:nth-child(3){justify-content:center!important}
+.cancel{font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif!important;font-size:var(--small-font)!important;line-height:1.22!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;min-height:72px!important;padding:10px!important}
+.rate{min-height:44px!important}
+.rate .rateMain,.rate .rateAmount{align-items:center!important}
+.totalGrid>div,.payPlan>div{align-items:center!important;min-height:46px!important}
+@media print{
+  .bankGrid>div,.cancel{font-size:var(--small-font)!important;line-height:1.18!important;display:flex!important;align-items:center!important}
+  .checkline{display:none!important}
+}
+
+/* ===== V10 Database / History UI ===== */
+.dbList{max-height:180px;overflow:auto;border:1px solid rgba(244,223,157,.22);border-radius:12px;background:rgba(255,255,255,.06);margin-top:8px}
+.dbItem{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:8px;border-bottom:1px solid rgba(244,223,157,.14);font-size:12px}
+.dbItem:last-child{border-bottom:0}.dbItem b{color:#fff}.dbItem span{color:#cbd5e1}.dbItem .miniBtns{display:flex;gap:4px;flex-wrap:wrap}.miniBtn{border:0;border-radius:8px;padding:5px 7px;font-weight:800;cursor:pointer;background:#334155;color:#fff;font-size:11px}.miniBtn.gold{background:#b88928;color:#111}.miniBtn.red{background:#b91c1c}.miniBtn.blue{background:#1d4ed8}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 8px;background:rgba(244,223,157,.16);border:1px solid rgba(244,223,157,.25);color:#f4df9d;font-size:11px;font-weight:900;margin-top:6px}
+@media print{.dbList,.badge{display:none!important}}
+
+/* ===== V12 HTML App Backup / Search / Vercel-ready tweaks ===== */
+.searchInput{margin-top:8px;background:rgba(255,255,255,.95)!important}
+.dbTools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.btn.slim{padding:7px 9px;font-size:11px;border-radius:9px}
+.appNote{border:1px solid rgba(244,223,157,.28);border-radius:12px;padding:9px;background:rgba(244,223,157,.08);font-size:12px;line-height:1.45;color:#e5e7eb}
+.appNote b{color:#f4df9d}
+
+.customerSelect{width:100%;min-height:38px;background:#07101e;color:#e5e7eb;border:1px solid rgba(244,223,157,.26);border-radius:10px;padding:9px;font-size:12px}
+.customerStatus{min-height:20px;margin-top:7px;font-size:12px;color:#f4df9d;line-height:1.4}
+.dbItem.active{border-color:rgba(244,223,157,.65);background:rgba(244,223,157,.12)}
+.dbItem small{color:#94a3b8;display:block;margin-top:2px;line-height:1.35}
+.dbFields textarea{min-height:54px}
+@media print{.searchInput,.dbTools,.appNote{display:none!important}}
+
+/* ===================================================================
+   SENEI KOTSU DASHBOARD SHELL — added in Dashboard Phase (Stage C)
+   This block is ADDITIVE ONLY. It does not modify any rule above.
+   Everything below is scoped to .shell* / #dashboardView / #invoiceView
+   classes/ids that do not exist anywhere in the original V12 markup,
+   so there is zero collision with existing selectors.
+   =================================================================== */
+:root{
+  --navy:#0f1f3d; --navy2:#16294f; --gold-accent:#e8c98a;
+  --dash-bg:#f4f5f7; --dash-card:#ffffff; --dash-border:#e2e5ea;
+  --dash-text:#1f2937; --dash-muted:#6b7280;
+  --ok:#0f7a4f; --warn:#b3760a; --bad:#c22b2b;
+}
+.shell{min-height:100vh;background:var(--dash-bg);font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif;color:var(--dash-text)}
+.shellHeader{display:flex;align-items:center;justify-content:space-between;background:var(--navy);color:#fff;padding:10px 20px;position:sticky;top:0;z-index:20}
+.shellHeader .brand{display:flex;align-items:center;gap:10px}
+.shellHeader .brand b{color:var(--gold-accent);font-size:16px;letter-spacing:.3px}
+.shellHeader .brand span{font-size:12px;color:#b9c4d6}
+.shellHeader .meta{font-size:12px;color:#c7d0e0;margin-right:auto;margin-left:24px}
+.shellHeader .hbtns{display:flex;gap:8px}
+.shellHeader .hbtn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer}
+.shellHeader .hbtn:hover{background:rgba(255,255,255,.16)}
+.shellHeader .hbtn.ghost{opacity:.65}
+.shellBody{display:flex;align-items:flex-start}
+.hamburgerBtn{display:none;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#fff;border-radius:8px;width:36px;height:36px;font-size:16px;cursor:pointer;align-items:center;justify-content:center;margin-right:8px}
+.hamburgerBtn:focus-visible{outline:2px solid var(--gold-accent);outline-offset:2px}
+.sidebarOverlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:25}
+.sidebarOverlay.show{display:block}
+.shellSidebar{width:200px;flex:0 0 200px;background:var(--navy2);min-height:calc(100vh - 49px);padding:14px 10px;position:sticky;top:49px}
+
+.navItem{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:8px;font-size:13px;color:#cdd7e6;cursor:pointer;margin-bottom:2px;border-left:3px solid transparent}
+.navItem:hover{background:rgba(255,255,255,.06)}
+.navItem.active{background:rgba(232,201,138,.14);color:var(--gold-accent);border-left:3px solid var(--gold-accent)}
+.navItem.disabled{color:#7c8798;cursor:default}
+.navItem.disabled:hover{background:none}
+.navItem .tag{margin-left:auto;font-size:9px;background:rgba(255,255,255,.1);color:#aab6c8;padding:2px 6px;border-radius:999px}
+.shellMain{flex:1;min-width:0;padding:20px}
+
+.dashboardView{max-width:1180px;margin:0 auto}
+.welcomeCard{background:linear-gradient(90deg,#0f1f3d,#16294f);color:#fff;border-radius:16px;padding:22px 26px;display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.welcomeCard h1{margin:0 0 4px;font-size:19px;font-weight:700}
+.welcomeCard p{margin:0;font-size:12.5px;color:#c7d0e0}
+.welcomeBtns{display:flex;gap:10px}
+.wbtn{border:0;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer}
+.wbtn.primary{background:var(--gold-accent);color:#3a2b06}
+.wbtn.secondary{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}
+
+.cardsGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.statCard{background:var(--dash-card);border:1px solid var(--dash-border);border-radius:14px;padding:14px 16px}
+.statCard .lbl{font-size:11.5px;color:var(--dash-muted);display:flex;align-items:center;justify-content:space-between}
+.statCard .val{font-size:22px;font-weight:700;margin-top:4px}
+.statCard .sub{font-size:11px;color:var(--dash-muted);margin-top:2px}
+
+.qaGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px}
+.qaBtn{background:var(--dash-card);border:1px solid var(--dash-border);border-radius:12px;padding:12px 8px;text-align:center;font-size:11.5px;cursor:pointer;color:var(--dash-text)}
+.qaBtn:hover{border-color:var(--gold);background:#fffaf0}
+.qaBtn i{display:block;font-size:19px;margin-bottom:5px;color:var(--navy)}
+
+.dashRow{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;margin-bottom:18px}
+.panelCard{background:var(--dash-card);border:1px solid var(--dash-border);border-radius:14px;overflow:hidden}
+.panelCard .ph{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--dash-border)}
+.panelCard .ph h3{margin:0;font-size:13px}
+.panelCard .ph .demoTag{font-size:9.5px;background:#fef3c7;color:#92400e;padding:2px 7px;border-radius:999px;font-weight:700;letter-spacing:.3px}
+.dashTable{width:100%;border-collapse:collapse;font-size:12px}
+.dashTable th{text-align:left;color:var(--dash-muted);font-weight:600;font-size:10.5px;padding:8px 14px;border-bottom:1px solid var(--dash-border)}
+.dashTable td{padding:9px 14px;border-bottom:1px solid #f0f1f4}
+.statusPill{font-size:10.5px;padding:3px 8px;border-radius:999px;font-weight:700}
+.statusPill.paid{background:#dcfce7;color:var(--ok)}
+.statusPill.unpaid{background:#fee2e2;color:var(--bad)}
+.statusPill.deposit{background:#fef3c7;color:var(--warn)}
+.statusPill.overdue{background:#fee2e2;color:var(--bad)}
+.rowActions a{font-size:11px;color:var(--navy);margin-right:8px;cursor:pointer;text-decoration:underline}
+
+.poBody{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.poItem .poTop{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.poItem .poMuted{color:var(--dash-muted)}
+.poBar{height:7px;border-radius:999px;background:#eef0f3;overflow:hidden}
+.poBar>div{height:100%;background:var(--navy)}
+
+.statusList{padding:12px 14px;display:flex;flex-direction:column;gap:9px}
+.statusRow{display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.statusRow .dot{width:7px;height:7px;border-radius:50%;margin-right:7px;display:inline-block}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)}
+.backupBanner{margin-top:6px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:11px;padding:8px 10px;border-radius:8px}
+
+.invoiceView{background:var(--dash-bg);min-height:calc(100vh - 49px)}
+.invoiceView .backBar{padding:10px 20px 0}
+.backToDash{display:inline-flex;align-items:center;gap:6px;background:var(--dash-card);border:1px solid var(--dash-border);border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer;color:var(--dash-text)}
+
+@media (max-width:1100px){
+  .cardsGrid{grid-template-columns:repeat(2,1fr)}
+  .qaGrid{grid-template-columns:repeat(3,1fr)}
+  .dashRow{grid-template-columns:1fr}
+}
+@media (max-width:820px){
+  .hamburgerBtn{display:inline-flex}
+  .shellSidebar{position:fixed;left:-200px;top:49px;height:calc(100vh - 49px);z-index:30;transition:left .18s ease;box-shadow:2px 0 12px rgba(0,0,0,.2)}
+  .shellSidebar.open{left:0}
+  .shellHeader .meta{display:none}
+  .qaGrid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:560px){
+  .cardsGrid{grid-template-columns:1fr}
+  .welcomeCard{flex-direction:column;align-items:flex-start;gap:14px}
+}
+
+/* Keep dashboard shell chrome fully OUT of the printable A4 output, and
+   reset every shell wrapper level (.shell/.shellBody/.shellMain/.invoiceView)
+   to plain block layout with zero margin/padding/sizing so none of the new
+   flex/grid/sticky/spacing rules can leak into print. This leaves the
+   ORIGINAL, UNMODIFIED V12 print rules (.app/.panel/.previewWrap/.paper,
+   defined earlier in this stylesheet) as the sole authority over the
+   printed Invoice Preview — nothing here overrides those. */
+@media print{
+  .shellHeader,.shellSidebar,.dashboardView,.backBar,.sidebarOverlay,.hamburgerBtn{display:none!important}
+  .shell,.shellBody,.shellMain,.invoiceView{
+    all:unset;
+    display:block!important;
+    position:static!important;
+    margin:0!important;
+    padding:0!important;
+    width:auto!important;
+    height:auto!important;
+    min-height:0!important;
+    max-width:none!important;
+    background:white!important;
+    box-shadow:none!important;
+    border:0!important;
+  }
+}
+
+/* ===================================================================
+   SENEI FLOW — V13 PRODUCTION VISUAL SYSTEM
+   Approved Concept A implementation. Business data and storage remain
+   compatible with Rev3; these rules rebuild readability and hierarchy.
+   =================================================================== */
+:root{
+  --flow-navy:#173154;--flow-deep:#0f2038;--flow-gold:#c7a45d;
+  --flow-bg:#f3f6f9;--flow-card:#fff;--flow-text:#172033;
+  --flow-muted:#667085;--flow-line:#dde3ea;--flow-soft:#f7f9fb;
+}
+.shell{background:var(--flow-bg);color:var(--flow-text)}
+.shellHeader{min-height:64px;padding:11px 24px;background:#fff;color:var(--flow-text);border-bottom:1px solid var(--flow-line);box-shadow:0 4px 18px rgba(23,49,84,.07)}
+.shellHeader .brand b{color:var(--flow-navy);font-size:18px}.shellHeader .brand span{color:var(--flow-muted);font-size:12px}
+.shellHeader .meta{color:var(--flow-muted)}
+.shellHeader .hbtn{background:#fff;border-color:var(--flow-line);color:var(--flow-navy);min-height:40px;font-size:13px}.shellHeader .hbtn:hover{background:#f7f9fb}.shellHeader .hbtn.ghost{opacity:.75}
+.shellSidebar{top:64px;min-height:calc(100vh - 64px);background:var(--flow-deep);padding:20px 12px;width:218px;flex-basis:218px}
+.navItem{font-size:14px;padding:12px 14px;margin-bottom:5px;border-radius:10px;color:#bdc8d9}.navItem.active{background:#fff;color:var(--flow-navy);border-left-color:var(--flow-gold);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+.shellBody{height:calc(100vh - 64px);overflow:hidden}
+.shellMain{height:100%;min-height:0;padding:24px;overflow:auto}.dashboardView{max-width:1320px}
+.welcomeCard{background:linear-gradient(120deg,var(--flow-navy),#254b78);padding:28px 30px;border-radius:18px}.welcomeCard h1{font-size:25px}.welcomeCard p{font-size:14px;line-height:1.5}.wbtn{min-height:44px;padding:11px 18px;font-size:14px}.wbtn.primary{background:#fff;color:var(--flow-navy)}
+.statCard,.panelCard{border-color:var(--flow-line);box-shadow:0 8px 25px rgba(23,49,84,.055)}.statCard{padding:18px}.statCard .lbl{font-size:13px}.statCard .val{font-size:28px}.statCard .sub{font-size:12px}
+.qaBtn{min-height:48px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:13px;border-color:var(--flow-line)}
+.panelCard .ph{padding:16px 18px}.panelCard .ph h3{font-size:16px}.dashTable{font-size:13px}.dashTable th{font-size:12px;padding:11px 14px}.dashTable td{padding:12px 14px}
+.invoiceView{height:100%;min-height:0;background:var(--flow-bg);overflow:hidden;display:flex;flex-direction:column}.invoiceView .backBar{flex:0 0 auto;padding:14px 22px 10px}.backToDash{min-height:40px;font-size:13px;border-color:var(--flow-line);box-shadow:0 4px 14px rgba(23,49,84,.06)}
+
+/* Editor + Preview workspace */
+.invoiceView .app{grid-template-columns:minmax(420px,38%) minmax(0,62%)!important;grid-template-rows:minmax(0,1fr)!important;gap:18px!important;padding:0 22px 22px!important;align-items:stretch!important;flex:1 1 auto!important;height:auto!important;min-height:0!important;overflow:hidden!important}
+.invoiceView .panel{height:100%!important;min-height:0!important;background:transparent!important;color:var(--flow-text)!important;border:0!important;box-shadow:none!important;padding:0 8px 48px 0!important;overflow-x:hidden!important;overflow-y:auto!important;overscroll-behavior:contain!important;scrollbar-gutter:stable!important;scrollbar-color:#aeb9c7 transparent}
+.invoiceView .panel>h2{position:sticky;top:0;z-index:4;margin:0 0 14px!important;padding:17px 18px!important;background:rgba(243,246,249,.96)!important;color:var(--flow-navy)!important;border-bottom:1px solid var(--flow-line);font-size:24px!important;backdrop-filter:blur(8px);display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}
+.invoiceView .version{background:#e8eef5!important;color:var(--flow-navy)!important;box-shadow:none!important;font-size:11px!important;padding:5px 8px!important}
+.invoiceView .group{background:#fff!important;border:1px solid var(--flow-line)!important;border-radius:16px!important;padding:20px!important;margin:0 0 15px!important;box-shadow:0 8px 25px rgba(23,49,84,.055)!important}
+.invoiceView .group h3{margin:-20px -20px 18px!important;padding:15px 18px!important;background:#fff!important;color:var(--flow-navy)!important;border:0!important;border-bottom:1px solid #edf0f4!important;border-radius:16px 16px 0 0!important;font-size:17px!important;letter-spacing:0!important}
+.invoiceView label{display:block!important;margin:11px 0 6px!important;color:#475467!important;font-size:13px!important;font-weight:800!important}
+.invoiceView input,.invoiceView textarea,.invoiceView select{min-height:44px!important;padding:11px 13px!important;background:#fff!important;color:var(--flow-text)!important;border:1px solid #cfd7e2!important;border-radius:10px!important;font-size:15px!important;line-height:1.45!important;box-shadow:0 1px 2px rgba(16,24,40,.03)!important}
+.invoiceView textarea{min-height:88px!important;resize:vertical}.invoiceView input:focus,.invoiceView textarea:focus,.invoiceView select:focus{outline:3px solid rgba(23,49,84,.12)!important;border-color:#56759c!important}
+.invoiceView .small{color:var(--flow-muted)!important;font-size:12px!important;line-height:1.55!important}.invoiceView .row,.invoiceView .row3{gap:12px!important}
+.invoiceView .btn{min-height:42px!important;padding:10px 14px!important;border-radius:10px!important;font-size:13px!important;box-shadow:none!important}.invoiceView .btn.gold{background:var(--flow-navy)!important;color:#fff!important;border-color:var(--flow-navy)!important}.invoiceView .btn.blue{background:#eef3f8!important;color:var(--flow-navy)!important;border-color:#cbd6e2!important}.invoiceView .btn.red{background:#fff1f0!important;color:#b42318!important;border-color:#f1c1bd!important}
+.invoiceView .item{background:#f8fafc!important;border:1px solid #e1e7ee!important;border-radius:12px!important;padding:14px!important;margin-bottom:10px!important}
+.invoiceView .dbList{border-color:var(--flow-line)!important;background:#fafbfc!important}.invoiceView .dbItem{padding:12px!important;border-color:#e7ebf0!important}
+.invoiceView .previewWrap{position:relative!important;top:auto!important;height:100%!important;min-height:0!important;overflow-x:auto!important;overflow-y:auto!important;overscroll-behavior:contain!important;scrollbar-gutter:stable both-edges!important;background:#e5eaf0!important;border:1px solid #d5dce5!important;border-radius:16px!important;padding:22px!important;box-shadow:inset 0 1px 0 #fff,0 12px 30px rgba(23,49,84,.09)!important}
+.invoiceView .paper{box-shadow:0 18px 50px rgba(23,34,49,.22)!important;border:0!important;border-radius:2px!important;background:#fff!important}
+
+/* SENEI Flow document system: lighter borders, clearer hierarchy */
+.paper{font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif!important;color:#172033!important}
+.paper .top{padding:15px 18px!important;border-bottom:2px solid var(--flow-navy)!important;background:#fff!important}
+.paper .logo{max-width:130px!important;height:auto!important}.paper .company{font-size:11px!important;line-height:1.42!important;color:#344054!important}
+.paper .titleBar{padding:11px!important;background:var(--flow-navy)!important;border:0!important;font-size:27px!important;letter-spacing:5px!important;text-shadow:none!important}
+.paper .infoGrid{gap:16px!important;margin-top:14px!important}.paper .box,.paper .tripTable{border:1px solid #d4dbe4!important;border-radius:8px!important;overflow:hidden!important}.paper .boxHead,.paper .tripTable td:first-child{background:#f1f4f7!important;color:#475467!important;font-size:10px!important;letter-spacing:.5px!important}.paper .customerName,.paper .tripTable td{font-size:12px!important;padding:9px 11px!important;border-color:#d9e0e8!important}.paper .issue{margin:9px 0 14px!important}.paper .issue>div{padding:7px 10px!important;border-color:#d9e0e8!important;font-size:10px!important}
+.paper .notice{margin:0 0 12px!important;padding:10px 12px!important;border:1px solid #f0c9c4!important;border-radius:7px!important;background:#fff8f7!important;color:#b42318!important;font-size:10px!important;line-height:1.45!important}
+.paper .invoiceGrid,.paper .invoiceGridHeader,.paper .invoiceRow{border-color:#cfd7e2!important}.paper .invoiceGridHeader>div{padding:8px!important;background:#edf2f7!important;color:#344054!important;border-color:#cfd7e2!important;font-size:10px!important}.paper .invoiceRow>div{padding:9px 8px!important;border-color:#dbe1e8!important;font-size:10px!important;line-height:1.4!important}.paper .detailText{font-size:10.5px!important;line-height:1.45!important}.paper .yellow{margin-top:0!important;padding:8px 10px!important;background:#f4ead1!important;color:#59451d!important;border-color:#d9c28c!important;font-size:9px!important}
+.paper .totalGrid,.paper .payPlan,.paper .rate{border-color:#cfd7e2!important}.paper .totalGrid>div,.paper .payPlan>div,.paper .rate{padding:9px 10px!important;border-color:#d8dfe7!important}.paper .totalLabel{color:#344054!important}.paper .moneyRed{color:#b42318!important}.paper .moneyBlue{color:#2458a6!important}
+.paper .bankGrid{display:grid!important;grid-template-columns:1.1fr .9fr!important;gap:12px!important;margin-top:12px!important;padding:0!important;border:0!important;background:#fff!important}.paper .bankGrid>div{display:block!important;min-height:118px!important;padding:13px 14px!important;border:1px solid #d8dfe7!important;border-left:4px solid var(--flow-gold)!important;border-radius:8px!important;font-size:9px!important;line-height:1.55!important;overflow-wrap:anywhere!important;white-space:pre-wrap!important}.paper .bankGrid>div:empty{display:none!important}
+.paper .cancel{margin-top:12px!important;padding:11px 13px!important;border:1px solid #e2b8b4!important;border-radius:8px!important;color:#b42318!important;font-size:8.5px!important;line-height:1.45!important}
+
+/* Rebuilt A4 presentation layer — content-driven height, no legacy row reservation */
+:root{--paper-w:794px}
+.invoiceView .paper{width:794px!important;min-height:1123px!important;height:auto!important;padding:30px 34px!important;box-sizing:border-box!important}
+.flowDoc{width:100%;color:#172033;font-family:Arial,'Noto Sans Thai','Yu Gothic',sans-serif;font-size:11px;line-height:1.4}
+.flowHead{display:flex;align-items:center;gap:18px;padding-bottom:13px;border-bottom:2px solid var(--flow-navy)}.flowHead img{width:94px;height:auto;flex:0 0 auto}.flowHead>div{display:flex;flex-direction:column;gap:2px}.flowHead b{font-size:15px;color:var(--flow-navy)}.flowHead span{font-size:8px;color:#536074;line-height:1.25}
+.flowTitle{display:flex;align-items:center;justify-content:flex-start;padding:14px 0 12px}.flowTitle>div:first-child{display:flex;align-items:baseline;gap:10px}.flowTitle h1{margin:0;color:var(--flow-navy);font-size:26px;letter-spacing:4px}.flowTitle>div:first-child span{font-size:9px;letter-spacing:2px;color:#7a8494}.flowDocNo{text-align:right}.flowDocNo small,.flowInfo small{display:block;font-size:7px;color:#7d8797;letter-spacing:.5px;font-weight:800}.flowDocNo b{font-size:12px;color:var(--flow-navy)}
+.flowInfo{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1.2fr) minmax(0,1.05fr);gap:9px;margin-bottom:10px;align-items:stretch}.flowInfo>div{min-width:0;min-height:68px;padding:10px 11px;border-radius:7px;background:#f3f6f9;border:1px solid #e1e6ed}.flowInfo b{display:block;margin:3px 0 7px;font-size:10px;overflow-wrap:anywhere}.flowCustomer b{white-space:normal;line-height:1.35}.flowInfoLine{display:grid;grid-template-columns:92px minmax(0,1fr);gap:6px;align-items:baseline;margin-bottom:5px}.flowInfoLine:last-child{margin-bottom:0}.flowInfoLine small,.flowInfoLine b{margin:0!important;line-height:1.25!important}.flowInfoLine small{white-space:nowrap}.flowInfoLine small::after{content:' :'}.flowInfoLine b{min-width:0;white-space:nowrap;overflow-wrap:normal}
+.flowNotice{margin-bottom:10px;padding:8px 10px;border-radius:6px;background:#fff7f6;border:1px solid #f1ceca;color:#b42318;text-align:center;font-size:8px;font-weight:800;line-height:1.4}
+.flowItems{width:100%;table-layout:fixed;border-collapse:collapse;font-size:9px}.flowItems .cDate{width:13%}.flowItems .cDetail{width:48%}.flowItems .cNet{width:12%}.flowItems .cQty{width:9%}.flowItems .cTotal{width:18%}.flowItems th{padding:7px 6px;background:#eaf0f6;color:#344054;border:1px solid #ccd5e0;font-size:8px;text-align:left}.flowItems th:nth-child(n+3){text-align:right}.flowItems td{height:auto!important;min-height:0!important;padding:8px 7px!important;border:1px solid #d9e0e8!important;vertical-align:top!important;font-size:9px!important;line-height:1.35!important;overflow-wrap:anywhere}.flowItems td.num{text-align:right;white-space:nowrap}.flowItems tr.flowExc td{color:#b42318!important;font-weight:800}.flowItems tbody tr{break-inside:avoid;page-break-inside:avoid}
+.flowBus{padding:7px 9px;background:#f5ead0;border:1px solid #ddc68f;color:#5d481d;text-align:center;font-size:7.5px;font-weight:900}
+.flowFinance{display:grid;grid-template-columns:1fr 255px;align-items:stretch;margin-top:9px;border:1px solid #d7dee7;border-radius:7px;overflow:hidden}.flowRateNote{padding:10px;color:#475467;font-size:8px;display:flex;align-items:center}.flowTotals{border-left:1px solid #d7dee7}.flowTotals>div{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-bottom:1px solid #e2e7ed}.flowTotals>div:last-child{border-bottom:0;background:#f4f7fa}.flowTotals span{font-size:7px;color:#667085;font-weight:900}.flowTotals b{font-size:12px;color:var(--flow-navy)}
+.flowPaymentPlan{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.flowPaymentPlan>div{padding:8px 10px;border:1px solid #d8dfe7;border-radius:7px;background:#f8fafc}.flowPaymentPlan small{display:block;color:#667085;font-size:7px;font-weight:900}.flowPaymentPlan b{display:block;margin:2px 0;color:#b42318;font-size:11px}.flowPaymentPlan span{font-size:7px;color:#526074}
+.flowBanks{display:grid;grid-template-columns:1.1fr .9fr;gap:9px;margin-top:10px}.flowBanks>div{min-height:88px;padding:10px 12px;border:1px solid #d7dee7;border-left:4px solid var(--flow-gold);border-radius:7px;font-size:8px;line-height:1.42;white-space:pre-wrap;overflow-wrap:anywhere}.flowBanks h3,.flowCancel h3{margin:0 0 5px;font-size:8px;color:var(--flow-navy);letter-spacing:.3px}
+.flowCancel{margin-top:9px;padding:8px 11px;border:1px solid #e6c2be;border-radius:7px;background:#fff9f8;color:#a9322b;font-size:7.3px;font-weight:700;line-height:1.35;white-space:pre-wrap}.flowCancel h3{color:#a9322b}
+
+/* Readability + fit revision */
+.invoiceView .panel>h2{font-size:21px!important;padding:14px 16px!important;margin-bottom:12px!important}
+.invoiceView .group h3{font-size:15px!important;padding:13px 16px!important;margin-bottom:16px!important}
+.invoiceView label{font-size:12px!important;margin:9px 0 5px!important}.invoiceView input,.invoiceView textarea,.invoiceView select{min-height:40px!important;padding:9px 11px!important;font-size:14px!important}.invoiceView textarea{min-height:76px!important}.invoiceView .small{font-size:11px!important}.invoiceView .btns{position:static!important;bottom:auto!important;margin-top:14px!important;padding:14px 0 4px!important;background:transparent!important;border-top:1px solid var(--flow-line)!important}
+.invoiceView .previewWrap{overflow-x:hidden!important;padding:18px!important;scrollbar-gutter:stable!important}.previewScale{margin:0 auto!important;transform:none!important;transform-origin:top center!important}.flowDoc{font-size:12.5px;line-height:1.45}.flowHead b{font-size:17px}.flowHead span{font-size:9.5px;line-height:1.3}.flowDocNo small{font-size:8px}.flowDocNo b{font-size:16px}.flowInfo small{font-size:8px}.flowInfo b{font-size:12px}.flowNotice{font-size:9.5px}.flowItems th{font-size:9.5px}.flowItems td{font-size:10.5px!important}.flowBus{font-size:9px}
+.flowRateNote{margin-top:9px;padding:8px 10px;border:1px solid #dce3eb;border-radius:7px;background:#f8fafc;color:#526074;font-size:9px;text-align:center}
+.flowCurrency{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:9px}.flowCurrency>div{display:grid;grid-template-columns:auto 1fr;align-items:end;column-gap:9px;padding:12px 14px;border:1px solid #d4dce6;border-radius:9px;background:#fff}.flowCurrency small{grid-column:1/-1;margin-bottom:4px;font-size:8px;font-weight:900;letter-spacing:.4px;color:#667085}.flowCurrency span{font-size:13px;font-weight:900}.flowCurrency b{text-align:right;font-size:22px;line-height:1;color:var(--flow-navy)}.flowCurrency .jpy{border-left:5px solid #b42318}.flowCurrency .jpy span,.flowCurrency .jpy b{color:#b42318}.flowCurrency .thb{border-left:5px solid #2458a6}.flowCurrency .thb span,.flowCurrency .thb b{color:#2458a6}
+
+/* Editor clarity + live Typography Studio */
+.invoiceView .compactCheck{margin-top:12px!important;padding:10px 12px;border:1px solid #dce3eb;border-radius:10px;background:#f8fafc;font-size:11px!important;font-weight:700!important}.invoiceView .compactCheck input,.invoiceView #useDeposit{width:15px!important;height:15px!important;min-height:15px!important;padding:0!important;flex:0 0 15px}
+.invoiceView .itemBox{position:relative;margin:0 0 16px!important;padding:38px 14px 14px!important;border:1px solid #cbd5e1!important;border-left:4px solid var(--flow-navy)!important;border-radius:12px!important;background:#fff!important;box-shadow:0 4px 12px rgba(23,49,84,.045)!important}.invoiceView .itemBox::before{content:attr(data-item-label);position:absolute;top:0;left:0;right:0;padding:8px 12px;border-bottom:1px solid #e1e7ee;background:#f3f6f9;color:var(--flow-navy);font-size:11px;font-weight:900;border-radius:8px 8px 0 0}
+.typographyStudio #typographyControls{display:grid;gap:8px;margin:12px 0}.typoRow{display:grid;grid-template-columns:minmax(110px,1.1fr) minmax(120px,1.35fr) 72px 44px;gap:8px;align-items:end;padding:9px 10px;border:1px solid #e1e7ee;border-radius:10px;background:#f8fafc}.typoRow>strong{align-self:center;color:#344054;font-size:11px}.typoRow label{margin:0!important;font-size:10px!important}.typoRow select,.typoRow input[type=number]{min-height:34px!important;height:34px!important;padding:5px 7px!important;font-size:11px!important}.typoRow input[type=color]{width:44px!important;height:34px!important;min-height:34px!important;padding:3px!important}
+
+/* These variables are the single authority for Preview typography. */
+.flowDoc{font-family:var(--typo-body-family,Arial),sans-serif!important;color:var(--typo-body-color,#172033)!important;font-size:var(--typo-body-size,12.5px)!important}
+.flowHead{font-family:var(--typo-company-family,Arial),sans-serif!important;color:var(--typo-company-color,#173154)!important}.flowHead b,.flowHead span{color:inherit!important}.flowHead b{font-size:var(--typo-company-size,17px)!important}.flowHead span{font-size:calc(var(--typo-company-size,17px) * .56)!important}
+.flowTitle{font-family:var(--typo-title-family,Arial),sans-serif!important;color:var(--typo-title-color,#173154)!important}.flowTitle h1,.flowDocNo b{color:inherit!important}.flowTitle h1{font-size:var(--typo-title-size,26px)!important}
+.flowInfo{font-family:var(--typo-info-family,Arial),sans-serif!important;color:var(--typo-info-color,#172033)!important}.flowInfo b{font-size:var(--typo-info-size,12px)!important}
+.flowNotice{font-family:var(--typo-notice-family,Arial),sans-serif!important;color:var(--typo-notice-color,#b42318)!important;font-size:var(--typo-notice-size,9.5px)!important}
+.flowItems{font-family:var(--typo-table-family,Arial),sans-serif!important;color:var(--typo-table-color,#172033)!important}.flowItems th,.flowItems td{font-size:var(--typo-table-size,10.5px)!important;color:inherit}.flowCurrency .jpy{font-family:var(--typo-jpy-family,Arial),sans-serif!important}.flowCurrency .jpy span,.flowCurrency .jpy b{color:var(--typo-jpy-color,#b42318)!important}.flowCurrency .jpy b{font-size:var(--typo-jpy-size,22px)!important}.flowCurrency .thb{font-family:var(--typo-thb-family,Arial),sans-serif!important}.flowCurrency .thb span,.flowCurrency .thb b{color:var(--typo-thb-color,#2458a6)!important}.flowCurrency .thb b{font-size:var(--typo-thb-size,22px)!important}.flowPaymentPlan{font-family:var(--typo-payment-family,Arial),sans-serif!important;color:var(--typo-payment-color,#b42318)!important}.flowPaymentPlan b{font-size:var(--typo-payment-size,11px)!important;color:inherit!important}.flowBanks{font-family:var(--typo-bank-family,Arial),sans-serif!important;color:var(--typo-bank-color,#172033)!important}.flowBanks>div{font-size:var(--typo-bank-size,10px)!important}.flowCancel{font-family:var(--typo-cancel-family,Arial),sans-serif!important;color:var(--typo-cancel-color,#a9322b)!important;font-size:var(--typo-cancel-size,9px)!important}
+/* Item Style controls change color only — never weight. */
+.flowItems tr.flowExc td{color:inherit!important;font-weight:400!important}.flowItems td.blueText{color:#2458a6!important;font-weight:400!important}.flowItems td.redText{color:#b42318!important;font-weight:400!important}
+.invoiceView input.autoComputed{background:#eef1f5!important;color:#173154!important;font-weight:800!important;cursor:not-allowed}.autoResult{display:block;margin-top:4px;color:#667085;font-size:10px}
+.flowPaymentMatrix{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:9px}.flowPayCurrency{overflow:hidden;border:1px solid #d4dce6;border-radius:9px;background:#fff}.flowPayCurrency.jpy{border-left:5px solid #b42318}.flowPayCurrency.thb{border-left:5px solid #2458a6}.flowPayHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f3f6f9;border-bottom:1px solid #dce3eb}.flowPayHead small{font-size:8px;font-weight:900;color:#667085}.flowPayHead b{font-size:18px}.flowPayCurrency.jpy .flowPayHead b,.flowPayCurrency.jpy .flowPayLine b{color:#b42318}.flowPayCurrency.thb .flowPayHead b,.flowPayCurrency.thb .flowPayLine b{color:#2458a6}.flowPayLine{display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid #e5e9ef;font-size:11px}.flowPayLine:last-child{border-bottom:0}.flowPayLine span{font-weight:700;white-space:nowrap}.flowPayLine b{text-align:right;font-size:11px;font-weight:700}.flowPayLine em{grid-column:1/-1;margin-top:-4px;color:#667085;font-size:8px;font-style:normal}
+.flowPayCurrency.jpy{font-family:var(--typo-jpy-family,Arial),sans-serif!important}.flowPayCurrency.jpy .flowPayHead b,.flowPayCurrency.jpy .flowPayLine b{font-size:var(--typo-jpy-size,22px)!important;color:var(--typo-jpy-color,#b42318)!important}.flowPayCurrency.thb{font-family:var(--typo-thb-family,Arial),sans-serif!important}.flowPayCurrency.thb .flowPayHead b,.flowPayCurrency.thb .flowPayLine b{font-size:var(--typo-thb-size,22px)!important;color:var(--typo-thb-color,#2458a6)!important}.flowPayLine span,.flowPayLine b{font-size:13px!important;line-height:1.25}.flowPayHead b{line-height:1.1}
+/* Unified, highly legible document captions. */
+.flowTitle>div:first-child span,.flowInfo small,.flowNotice,.flowItems th,.flowPayHead small,.flowPayLine em,.flowRateNote,.flowBanks h3,.flowCancel h3{font-family:Tahoma,Arial,sans-serif!important;font-size:10px!important;font-weight:700!important;color:#24364f!important;letter-spacing:.25px!important}.flowNotice{color:#9f2d25!important}.flowItems th{color:#24364f!important}.flowPayLine em{margin-top:-2px!important}.flowRateNote{line-height:1.4!important}.flowBanks h3,.flowCancel h3{margin-bottom:6px!important}.flowCancel h3{color:#8f2c25!important}
+/* Compact operator UI */
+.invoiceView .backBar{padding:9px 16px 7px!important}.backToDash{min-height:34px!important;padding:7px 11px!important;font-size:12px!important}.invoiceView .app{gap:14px!important;padding:0 16px 16px!important}.invoiceView .panel>h2{padding:10px 13px!important;margin-bottom:9px!important;font-size:19px!important}.invoiceView .group{padding:14px!important;margin-bottom:10px!important;border-radius:13px!important}.invoiceView .group h3{margin:-14px -14px 11px!important;padding:10px 13px!important;font-size:14px!important;border-radius:13px 13px 0 0!important}.invoiceView label{margin:7px 0 4px!important;font-size:11px!important}.invoiceView input,.invoiceView textarea,.invoiceView select{min-height:36px!important;padding:7px 9px!important;font-size:13px!important;border-radius:8px!important}.invoiceView textarea{min-height:64px!important}.invoiceView .btn{min-height:36px!important;padding:7px 11px!important;font-size:12px!important}.invoiceView .itemBox{margin-bottom:11px!important;padding:34px 11px 11px!important}.invoiceView .small{font-size:10px!important}.typoRow{padding:7px 8px!important;gap:6px!important}
+/* One-page A4 engine: measured and proportionally fitted. */
+.invoiceView .paper{height:1123px!important;min-height:1123px!important;overflow:hidden!important}.flowDoc{transform-origin:top left!important;will-change:transform}
+/* Master typography scale + ultra-tight document rhythm. */
+.flowHead b{font-size:calc(var(--typo-company-size,17px) * var(--typo-body-scale,1))!important}.flowHead span{font-size:calc(var(--typo-company-size,17px) * .56 * var(--typo-body-scale,1))!important}.flowTitle h1{font-size:calc(var(--typo-title-size,26px) * var(--typo-body-scale,1))!important}.flowInfo b{font-size:calc(var(--typo-info-size,12px) * var(--typo-body-scale,1))!important}.flowNotice{font-size:calc(var(--typo-notice-size,6px) * var(--typo-body-scale,1))!important;white-space:nowrap!important}.flowItems th,.flowItems td{font-size:calc(var(--typo-table-size,10.5px) * var(--typo-body-scale,1))!important}.flowCurrency .jpy b,.flowPayCurrency.jpy .flowPayHead b,.flowPayCurrency.jpy .flowPayLine b{font-size:calc(var(--typo-jpy-size,22px) * var(--typo-body-scale,1))!important}.flowCurrency .thb b,.flowPayCurrency.thb .flowPayHead b,.flowPayCurrency.thb .flowPayLine b{font-size:calc(var(--typo-thb-size,22px) * var(--typo-body-scale,1))!important}.flowPaymentPlan b{font-size:calc(var(--typo-payment-size,11px) * var(--typo-body-scale,1))!important}.flowBanks>div{font-size:calc(var(--typo-bank-size,10px) * var(--typo-body-scale,1))!important}.flowCancel{font-size:calc(var(--typo-cancel-size,9px) * var(--typo-body-scale,1))!important}
+.flowHead{gap:9px!important;padding-bottom:5px!important}.flowHead img{width:78px!important}.flowTitle{padding:5px 0!important}.flowInfo{gap:4px!important;margin-bottom:4px!important}.flowInfo>div{min-height:0!important;padding:5px 6px!important}.flowInfo b{margin:1px 0 3px!important}.flowNotice{margin-bottom:4px!important;padding:3px 5px!important;line-height:1.2!important}.flowItems th,.flowItems td{padding:4px 5px!important;line-height:1.2!important}.flowBus{padding:3px 5px!important}.flowRateNote{margin-top:4px!important;padding:3px 5px!important}.flowCurrency,.flowPaymentMatrix{gap:4px!important;margin-top:4px!important}.flowCurrency>div,.flowPayHead,.flowPayLine{padding:5px 7px!important}.flowBanks{gap:4px!important;margin-top:4px!important}.flowBanks>div{min-height:0!important;padding:5px 7px!important;line-height:1.25!important}.flowCancel{margin-top:4px!important;padding:4px 7px!important;line-height:1.2!important}.flowBanks h3,.flowCancel h3{margin-bottom:2px!important}
+@media(max-width:620px){.typoRow{grid-template-columns:1fr 1fr}.typoRow>strong{grid-column:1/-1}}
+
+@media(max-width:1020px){.shellBody{height:auto;min-height:calc(100vh - 64px);overflow:visible}.shellMain{height:auto;overflow:visible}.invoiceView{height:auto;overflow:visible}.invoiceView .app{display:grid!important;grid-template-columns:1fr!important;grid-template-rows:auto auto!important;height:auto!important;overflow:visible!important}.invoiceView .panel{height:auto!important;overflow:visible!important;padding-right:0!important}.invoiceView .previewWrap{height:auto!important;min-height:650px!important;overflow-x:hidden!important;overflow-y:auto!important}}
+@media(max-width:700px){.shellMain{padding:14px}.invoiceView .app{padding:0 12px 12px!important}.invoiceView .group{padding:16px!important}.invoiceView .group h3{margin:-16px -16px 15px!important}.invoiceView .row,.invoiceView .row3{grid-template-columns:1fr!important}.invoiceView .panel>h2{font-size:20px!important}.invoiceView .previewWrap{padding:10px!important}.shellHeader .brand span{display:none}}
+@media print{
+  .invoiceView .paper{width:196mm!important;min-height:285mm!important;height:285mm!important;margin:0!important;padding:6mm 7mm!important;box-shadow:none!important;overflow:hidden!important}
+  .flowDoc{font-size:9pt!important}.flowHead{padding-bottom:2.5mm!important}.flowHead img{width:24mm!important}.flowHead b{font-size:12pt!important}.flowHead span{font-size:7pt!important}.flowTitle{padding:3mm 0 2.5mm!important}.flowTitle h1{font-size:21pt!important}.flowInfo{gap:2.3mm!important;margin-bottom:2.3mm!important}.flowInfo>div{min-height:15mm!important;padding:2.2mm 2.5mm!important}.flowNotice{margin-bottom:2.3mm!important;padding:1.8mm 2.3mm!important}.flowItems th{padding:1.6mm!important;font-size:7.5pt!important}.flowItems td{padding:1.8mm!important;font-size:8pt!important;line-height:1.3!important}.flowBus{padding:1.7mm 2mm!important}.flowRateNote{margin-top:2.2mm!important;padding:1.7mm!important;font-size:7pt!important}.flowCurrency{gap:2.3mm!important;margin-top:2.2mm!important}.flowCurrency>div{padding:2.2mm 2.7mm!important}.flowCurrency b{font-size:15pt!important}.flowPaymentPlan,.flowCurrency,.flowBanks{break-inside:avoid!important;page-break-inside:avoid!important}.flowBanks{gap:2.3mm!important;margin-top:2.4mm!important}.flowBanks>div{min-height:20mm!important;padding:2.2mm 2.5mm!important;font-size:7pt!important}.flowCancel{margin-top:2.3mm!important;padding:2mm 2.5mm!important;font-size:6.8pt!important;break-inside:auto!important;page-break-inside:auto!important}
+}
+@media print{
+  html,body{width:auto!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important}
+  .invoiceView .paper{width:194mm!important;max-width:194mm!important;height:283mm!important;min-height:283mm!important;margin:0 auto!important;padding:6mm 7mm!important;border:1px solid #cfd7e2!important;box-sizing:border-box!important;overflow:hidden!important}
+  .flowDoc{font-family:var(--typo-body-family,Arial),sans-serif!important;color:var(--typo-body-color,#172033)!important;font-size:var(--typo-body-size,12.5px)!important}
+  .flowHead b{font-size:var(--typo-company-size,17px)!important}.flowHead span{font-size:calc(var(--typo-company-size,17px) * .56)!important}.flowTitle h1{font-size:var(--typo-title-size,26px)!important}.flowInfo b{font-size:var(--typo-info-size,12px)!important}.flowNotice{font-size:var(--typo-notice-size,9.5px)!important}.flowItems th,.flowItems td{font-size:var(--typo-table-size,10.5px)!important}.flowCurrency .jpy b{font-size:var(--typo-jpy-size,22px)!important}.flowCurrency .thb b{font-size:var(--typo-thb-size,22px)!important}.flowPayCurrency.jpy .flowPayHead b{font-size:var(--typo-jpy-size,22px)!important}.flowPayCurrency.thb .flowPayHead b{font-size:var(--typo-thb-size,22px)!important}.flowPayLine span,.flowPayLine b{font-size:13px!important}.flowPaymentPlan b{font-size:var(--typo-payment-size,11px)!important}.flowBanks>div{font-size:var(--typo-bank-size,10px)!important}.flowCancel{font-size:var(--typo-cancel-size,9px)!important}.flowPaymentMatrix{break-inside:avoid!important;page-break-inside:avoid!important}
+}
+@media print{
+  .flowHead b{font-size:calc(var(--typo-company-size,17px) * var(--typo-body-scale,1))!important}.flowHead span{font-size:calc(var(--typo-company-size,17px) * .56 * var(--typo-body-scale,1))!important}.flowTitle h1{font-size:calc(var(--typo-title-size,26px) * var(--typo-body-scale,1))!important}.flowInfo b{font-size:calc(var(--typo-info-size,12px) * var(--typo-body-scale,1))!important}.flowNotice{font-size:calc(var(--typo-notice-size,6px) * var(--typo-body-scale,1))!important;white-space:nowrap!important}.flowItems th,.flowItems td{font-size:calc(var(--typo-table-size,10.5px) * var(--typo-body-scale,1))!important}.flowCurrency .jpy b,.flowPayCurrency.jpy .flowPayHead b,.flowPayCurrency.jpy .flowPayLine b{font-size:calc(var(--typo-jpy-size,22px) * var(--typo-body-scale,1))!important}.flowCurrency .thb b,.flowPayCurrency.thb .flowPayHead b,.flowPayCurrency.thb .flowPayLine b{font-size:calc(var(--typo-thb-size,22px) * var(--typo-body-scale,1))!important}.flowBanks>div{font-size:calc(var(--typo-bank-size,10px) * var(--typo-body-scale,1))!important}.flowCancel{font-size:calc(var(--typo-cancel-size,9px) * var(--typo-body-scale,1))!important}
+  .flowHead{padding-bottom:1.2mm!important}.flowHead img{width:20mm!important}.flowTitle{padding:1.2mm 0!important}.flowInfo{gap:1mm!important;margin-bottom:1mm!important}.flowInfo>div{min-height:0!important;padding:1.2mm 1.5mm!important}.flowNotice{margin-bottom:1mm!important;padding:.8mm 1.2mm!important}.flowItems th,.flowItems td{padding:1mm 1.2mm!important}.flowBus,.flowRateNote{padding:.8mm 1.2mm!important}.flowRateNote,.flowCurrency,.flowPaymentMatrix,.flowBanks,.flowCancel{margin-top:1mm!important}.flowCurrency,.flowPaymentMatrix,.flowBanks{gap:1mm!important}.flowCurrency>div,.flowPayHead,.flowPayLine,.flowBanks>div,.flowCancel{padding:1.2mm 1.5mm!important}.flowBanks>div{min-height:0!important}
+}
+/* V13 acceptance polish: stronger guidance text and clearer section borders. */
+.invoiceView .appNote{color:#344054!important;background:#fffbeb!important;border:2px solid #d7b45a!important;box-shadow:0 2px 8px rgba(146,100,18,.10)!important;font-size:13px!important;line-height:1.65!important}
+.invoiceView .appNote b{color:#8a5a00!important;font-weight:900!important}
+.invoiceView .dbList{border:2px solid #b8c3d1!important;background:#fff!important}
+.invoiceView .dbItem{border-bottom:1.5px solid #cbd4df!important;background:#fff!important}
+.invoiceView .dbItem:nth-child(even){background:#f6f8fb!important}
+.invoiceView .dbItem b{color:#172033!important;font-weight:900!important}
+.invoiceView .dbItem span{color:#344054!important;font-weight:700!important}
+.invoiceView .dbItem small{color:#526174!important}
+.flowInfo>div{border:3px solid #3a4152!important;border-radius:5px!important}.flowNotice{border:3px solid #a4524b!important;border-radius:5px!important}
+.flowItems{border:3px solid #3a4152!important}.flowItems th,.flowItems td{border:2px solid #526072!important}.flowBus{border:3px solid #876d33!important}.flowRateNote{border:3px solid #3a4152!important;border-radius:5px!important}
+.flowCurrency>div,.flowPayCurrency{border-width:3px!important;border-style:solid!important;border-radius:5px!important}.flowCurrency .thb,.flowPayCurrency.thb{border-color:#4a73ae!important}.flowCurrency .jpy,.flowPayCurrency.jpy{border-color:#bd4b43!important}.flowPayHead,.flowPayLine{border-bottom-color:#6d7888!important;border-bottom-width:2px!important}
+.flowBanks>div{border-top:3px solid #876d33!important;border-right:3px solid #876d33!important;border-bottom:3px solid #876d33!important;border-left:4px solid #876d33!important;border-radius:5px!important}.flowCancel{border:3px solid #a4524b!important;border-radius:5px!important}
+.invoiceView .backBar{display:flex!important;align-items:center!important;gap:9px!important;flex-wrap:wrap!important}
+.jumpBottomBtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:34px;padding:7px 12px;border:2px solid #173154;border-radius:8px;background:#173154;color:#fff;font:800 12px Tahoma,Arial,sans-serif;cursor:pointer;box-shadow:0 4px 12px rgba(23,49,84,.16);white-space:nowrap}
+.jumpBottomBtn:hover{background:#244b79}.jumpBottomBtn:focus{outline:3px solid rgba(36,75,121,.22);outline-offset:2px}
+.jumpBottomFloat{display:flex!important;position:fixed!important;left:232px!important;bottom:20px!important;z-index:10000!important;align-items:center!important;justify-content:center!important;min-width:154px!important;min-height:46px!important;padding:10px 16px!important;border:3px solid #fff!important;border-radius:999px!important;background:#173154!important;color:#fff!important;font:900 14px Tahoma,Arial,sans-serif!important;cursor:pointer!important;box-shadow:0 10px 28px rgba(15,31,61,.38)!important;white-space:nowrap!important}
+.jumpBottomFloat:hover{background:#244b79!important;transform:translateY(-1px)}
+@media(max-width:1020px){.jumpBottomFloat{left:18px!important;bottom:18px!important}}
+@media print{.jumpBottomBtn,.jumpBottomFloat{display:none!important}}
+.paymentView{padding:24px;min-height:100%;background:#f3f6fa}.paymentHeader{display:flex;justify-content:space-between;gap:18px;align-items:flex-end;margin-bottom:18px}.paymentHeader h1{margin:0;color:#173154;font-size:26px}.paymentHeader p{margin:5px 0 0;color:#64748b}.paymentLayout{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);gap:18px}.paymentCard{background:#fff;border:1.5px solid #b8c6d8;border-radius:14px;box-shadow:0 8px 24px rgba(23,49,84,.07);overflow:hidden;margin-bottom:16px}.paymentCardHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-bottom:1.5px solid #b8c6d8;background:#f7f9fc}.paymentCardHead h2,.paymentCardHead h3{margin:0;color:#173154;font-size:16px}.paymentCardBody{padding:15px}.paymentSummary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.paymentMetric{background:#fff;border:1.5px solid #b8c6d8;border-radius:12px;padding:13px}.paymentMetric small{display:block;color:#526174;font-weight:800;margin-bottom:6px}.paymentMetric strong{display:block;color:#173154;font-size:20px}.invoiceBalance{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;padding:12px;border:1.5px solid #b8c6d8;border-radius:10px;background:#f8fafc;margin:12px 0}.balanceItem small{display:block;color:#64748b;font-weight:700}.balanceItem b{font-size:16px;color:#173154}.statusBadge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900;background:#e7edf5;color:#173154}.statusBadge.paid{background:#dcfce7;color:#166534}.statusBadge.partial{background:#fef3c7;color:#92400e}.statusBadge.overpaid{background:#fee2e2;color:#991b1b}.paymentFormGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.paymentFormGrid .wide{grid-column:1/-1}.paymentView label{color:#173154!important}.paymentLedgerTools{display:flex;gap:9px;flex-wrap:wrap;padding:12px 15px;border-bottom:1px solid #d9e1eb}.paymentLedgerTools input{max-width:420px}.paymentTableWrap{overflow:auto}.paymentTable{width:100%;border-collapse:collapse;min-width:860px}.paymentTable th{background:#eaf0f7;color:#173154;text-align:left;font-size:11px;padding:10px;border-bottom:1.5px solid #aebdd0}.paymentTable td{padding:10px;border-bottom:1px solid #d9e1eb;font-size:12px;vertical-align:top}.paymentTable .amount{text-align:right;font-weight:900}.paymentEmpty{padding:28px;text-align:center;color:#64748b}.paymentNote{font-size:11px;color:#64748b;line-height:1.5}.navItem.activePayment{background:#2d4266;color:#fff}.paymentDanger{color:#b42318}.paymentInvoiceTitle{font-weight:900;color:#173154}.paymentInvoiceSub{font-size:11px;color:#64748b;margin-top:3px}.receiptActions{display:flex;gap:5px;flex-wrap:wrap}.miniBtn.receipt{background:#173154;color:#fff}
+@media(max-width:1100px){.paymentLayout{grid-template-columns:1fr}.paymentSummary{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:640px){.paymentView{padding:14px}.paymentHeader{align-items:flex-start;flex-direction:column}.paymentSummary,.paymentFormGrid{grid-template-columns:1fr}.paymentFormGrid .wide{grid-column:auto}}
+.reportsView{padding:24px;min-height:100%;background:#f3f6fa}.reportsHeader{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:18px}.reportsHeader h1{margin:0;color:#173154;font-size:26px}.reportsHeader p{margin:5px 0 0;color:#64748b}.reportFilters{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:14px;background:#fff;border:1.5px solid #b8c6d8;border-radius:14px;margin-bottom:16px}.reportFilters label{margin:0!important;color:#344054!important;font-size:11px!important}.reportFilters input,.reportFilters select{min-height:38px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff}.reportMetrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.reportMetric{background:#fff;border:1.5px solid #b8c6d8;border-radius:12px;padding:14px}.reportMetric small{display:block;color:#526174;font-size:11px;font-weight:900;margin-bottom:6px}.reportMetric strong{display:block;color:#173154;font-size:20px}.reportGrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,.72fr);gap:16px}.reportCard{background:#fff;border:1.5px solid #b8c6d8;border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:0 8px 24px rgba(23,49,84,.05)}.reportCardHead{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:13px 15px;border-bottom:1.5px solid #b8c6d8;background:#f7f9fc}.reportCardHead h2{margin:0;color:#173154;font-size:16px}.reportTableWrap{overflow:auto}.reportTable{width:100%;border-collapse:collapse;min-width:700px}.reportTable.compact{min-width:520px}.reportTable th{padding:10px;background:#eaf0f7;color:#173154;text-align:left;font-size:11px;border-bottom:1.5px solid #aebdd0}.reportTable td{padding:10px;border-bottom:1px solid #d9e1eb;font-size:12px;vertical-align:top}.reportTable td.amount,.reportTable th.amount{text-align:right}.reportEmpty{text-align:center;color:#64748b;padding:28px!important}.reportNote{padding:12px 15px;color:#64748b;font-size:11px;line-height:1.5}.navItem.activeReports{background:#2d4266;color:#fff}.reportStatus{white-space:nowrap}.reportBar{height:7px;border-radius:999px;background:#e7edf5;overflow:hidden;margin-top:5px}.reportBar span{display:block;height:100%;background:#2d5fa7;border-radius:999px}.reportWarn{color:#b42318}.reportOk{color:#166534}
+.agingToolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.agingToolbar label{font-size:10px;font-weight:900;color:#526174}.agingToolbar input{min-height:34px;padding:6px 8px;border:1px solid #b8c6d8;border-radius:7px}.agingMetrics{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:14px}.agingMetric{border:1.5px solid #c7d2e0;border-radius:10px;padding:11px;background:#fff}.agingMetric small{display:block;color:#526174;font-size:10px;font-weight:900;margin-bottom:5px}.agingMetric strong{display:block;color:#173154;font-size:16px}.agingMetric.overdue{border-color:#e3aaa5;background:#fff8f7}.agingMetric.overdue strong{color:#a72b21}.agingMetric.noDue{border-color:#d6c38e;background:#fffdf6}.agingDue{white-space:nowrap}.agingLate{color:#b42318;font-weight:900}.agingFuture{color:#166534;font-weight:900}
+@media(max-width:1100px){.reportGrid{grid-template-columns:1fr}.reportMetrics{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:1100px){.agingMetrics{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.reportsView{padding:14px}.reportsHeader{align-items:flex-start;flex-direction:column}.reportMetrics,.agingMetrics{grid-template-columns:1fr}.reportFilters>*{width:100%}}
+@media print{.reportsView{display:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ SHELL HEADER (new) ============ -->
+  <header class="shellHeader">
+    <button class="hamburgerBtn" id="hamburgerBtn" type="button" aria-label="Open navigation menu" aria-controls="shellSidebar" aria-expanded="false" onclick="seneiToggleSidebar()">
+      <span aria-hidden="true">&#9776;</span>
+    </button>
+    <div class="brand"><b>SENEI KOTSU</b><span>Invoice Management System</span></div>
+    <div class="meta" id="shellDate"></div>
+    <div class="hbtns">
+      <button class="hbtn" onclick="seneiBackupAll()"><span aria-hidden="true">&#128190;</span> Backup Data</button>
+      <button class="hbtn ghost" onclick="seneiSetting()"><span aria-hidden="true">&#8618;</span> Logout</button>
+    </div>
+  </header>
+
+  <!-- Mobile sidebar overlay (new) — click or Escape closes the sidebar -->
+  <div class="sidebarOverlay" id="sidebarOverlay" onclick="seneiCloseMobileSidebar()"></div>
+
+  <div class="shellBody">
+    <!-- ============ SIDEBAR (new) — Settings appears exactly once, here ============ -->
+    <nav class="shellSidebar" id="shellSidebar">
+      <div class="navItem active" id="nav-dashboard" onclick="seneiShowDashboard()">Dashboard</div>
+      <div class="navItem" onclick="seneiCreateNewInvoice()">Create Invoice</div>
+      <div class="navItem" onclick="seneiShowInvoice('grp-history')">Invoice History</div>
+      <div class="navItem" onclick="seneiShowInvoice('grp-customerdb')">Customer Database</div>
+      <div class="navItem" id="nav-payments" onclick="seneiShowPayments()">Payment Tracking</div>
+      <div class="navItem" id="nav-reports" onclick="seneiShowReports()">Reports</div>
+      <div class="navItem disabled" onclick="seneiSetting()">Settings<span class="tag">Soon</span></div>
+    </nav>
+
+    <main class="shellMain">
+
+      <!-- ============ DASHBOARD VIEW (new) ============ -->
+      <section class="dashboardView" id="dashboardView">
+
+        <div class="welcomeCard">
+          <div>
+            <h1>Welcome to SENEI KOTSU</h1>
+            <p>Manage customer invoices, payment tracking and history in one place.</p>
+          </div>
+          <div class="welcomeBtns">
+            <button class="wbtn primary" onclick="seneiCreateNewInvoice()">Create New Invoice</button>
+            <button class="wbtn secondary" onclick="seneiShowInvoice('grp-history')">View Invoice History</button>
+          </div>
+        </div>
+
+        <!-- Summary cards — calculated live from real Invoice, Customer and Payment records. -->
+        <div class="cardsGrid" id="summaryCardsGrid">
+          <div class="statCard"><div class="lbl">Total Invoices<span aria-hidden="true">&#128196;</span></div><div class="val" id="statTotalInvoices">—</div><div class="sub" id="statTotalInvoicesSub">Loading…</div></div>
+          <div class="statCard"><div class="lbl">Outstanding Payments<span aria-hidden="true">&#9888;&#65039;</span></div><div class="val" id="statOutstanding">—</div><div class="sub" id="statOutstandingSub">Loading…</div></div>
+          <div class="statCard"><div class="lbl">Paid This Month<span aria-hidden="true">&#9989;</span></div><div class="val" id="statPaidMonth">—</div><div class="sub" id="statPaidMonthSub">Loading…</div></div>
+          <div class="statCard"><div class="lbl">Total Customers<span aria-hidden="true">&#128101;</span></div><div class="val" id="statTotalCustomers">—</div><div class="sub" id="statTotalCustomersSub">Loading…</div></div>
+        </div>
+
+        <!-- Quick actions — every button calls a real existing V12 function or a
+             genuine navigation shortcut. None of these write placeholder data. -->
+        <div class="qaGrid">
+          <div class="qaBtn" onclick="seneiCreateNewInvoice()"><span aria-hidden="true">&#128221;</span>Create New Invoice</div>
+          <div class="qaBtn" onclick="seneiShowInvoice('grp-customerdb')"><span aria-hidden="true">&#128100;</span>Add New Customer</div>
+          <div class="qaBtn" onclick="seneiShowInvoice('grp-history')"><span aria-hidden="true">&#128269;</span>Search Invoice</div>
+          <div class="qaBtn" onclick="seneiShowPayments()"><span aria-hidden="true">&#128181;</span>Record Payment</div>
+          <div class="qaBtn" onclick="seneiBackupAll()"><span aria-hidden="true">&#9650;</span>Backup Data</div>
+          <div class="qaBtn" onclick="seneiRestoreAll()"><span aria-hidden="true">&#9660;</span>Restore Data</div>
+        </div>
+
+        <div class="dashRow">
+          <!-- Recent invoices — real records read from senei_invoice_history_v10. -->
+          <div class="panelCard">
+            <div class="ph"><h3>Recent Invoices</h3><span class="demoTag" id="recentInvoicesTag" style="background:#dcfce7;color:var(--ok)">LIVE DATA</span></div>
+            <table class="dashTable" id="recentInvoicesTable">
+              <thead><tr><th>Invoice No.</th><th>Customer</th><th>Tour</th><th>Issue Date</th><th>Amount (JPY)</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="recentInvoicesBody">
+                <tr><td colspan="7" style="text-align:center;color:var(--dash-muted);padding:18px">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="panelCard">
+              <div class="ph"><h3>Payment Overview</h3><span class="demoTag" style="background:#dcfce7;color:var(--ok)">LIVE DATA</span></div>
+              <div class="poBody" id="dashboardPaymentOverview"></div>
+            </div>
+
+            <!-- System status — reflects REAL Local Storage presence, distinguishing
+                 valid / empty / unavailable / corrupted data (see seneiReadStore). -->
+            <div class="panelCard">
+              <div class="ph"><h3>System Status</h3></div>
+              <div class="statusList" id="systemStatusList"></div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="paymentView" id="paymentView" style="display:none">
+        <div class="paymentHeader"><div><h1>Payment Tracking</h1><p>บันทึก Deposit, Final และการรับชำระเงินจริงแยกตาม Invoice</p></div><button class="btn blue" type="button" onclick="seneiShowDashboard()">&larr; Back to Dashboard</button></div>
+        <div class="paymentSummary">
+          <div class="paymentMetric"><small>OUTSTANDING (JPY)</small><strong id="payMetricOutstanding">JPY 0</strong></div>
+          <div class="paymentMetric"><small>RECEIVED (JPY)</small><strong id="payMetricJpy">JPY 0</strong></div>
+          <div class="paymentMetric"><small>RECEIVED (THB)</small><strong id="payMetricThb">THB 0</strong></div>
+          <div class="paymentMetric"><small>PAID INVOICES</small><strong id="payMetricPaid">0</strong></div>
+        </div>
+        <div class="paymentLayout">
+          <div>
+            <div class="paymentCard"><div class="paymentCardHead"><h2>Record Payment</h2><span class="statusBadge" id="paymentStatusBadge">Select Invoice</span></div><div class="paymentCardBody">
+              <label>Invoice</label><select id="paymentInvoice" onchange="seneiRefreshPaymentInvoice(true)"><option value="">-- เลือก Invoice จาก History --</option></select>
+              <div class="invoiceBalance" id="paymentInvoiceBalance"><div class="balanceItem"><small>Invoice Total</small><b>JPY 0</b></div><div class="balanceItem"><small>Remaining</small><b>JPY 0</b></div></div>
+              <div class="paymentFormGrid">
+                <div><label>Payment Date</label><input id="paymentDate" type="date"></div>
+                <div><label>Payment Type</label><select id="paymentType" onchange="seneiRefreshPaymentInvoice(true)"><option>Deposit</option><option>Final</option><option>Partial</option><option>Full</option><option>Adjustment</option></select></div>
+                <div><label>Currency</label><select id="paymentCurrency" onchange="seneiRefreshPaymentInvoice(true)"><option value="JPY">JPY</option><option value="THB">THB</option></select></div>
+                <div><label>Amount</label><input id="paymentAmount" type="number" min="0" step="1" placeholder="0"></div>
+                <div class="wide"><label>Payment Method</label><select id="paymentMethod"><option>Bank Transfer</option><option>Cash</option><option>Card</option><option>Other</option></select></div>
+                <div class="wide"><label>Reference</label><input id="paymentReference" placeholder="เลขอ้างอิง / เลขสลิป"></div>
+                <div class="wide"><label>Note</label><textarea id="paymentNote" placeholder="หมายเหตุเพิ่มเติม"></textarea></div>
+              </div>
+              <div class="toolbar"><button class="btn gold" type="button" onclick="seneiRecordPayment()">Save Payment</button><button class="btn gray" type="button" onclick="seneiClearPaymentForm()">Clear Form</button></div>
+              <p class="paymentNote">ระบบบันทึก Payment แยกจาก Invoice History และจะไม่แก้ยอดหรือเนื้อหาของ Invoice เดิม</p>
+            </div></div>
+            <div class="paymentCard"><div class="paymentCardHead"><h3>Payment Data</h3></div><div class="paymentCardBody"><div class="toolbar"><button class="btn" type="button" onclick="seneiExportPayments()">Backup Payments</button><button class="btn blue" type="button" onclick="triggerImport('payments')">Restore Payments</button></div></div></div>
+          </div>
+          <div class="paymentCard"><div class="paymentCardHead"><h2>Payment Ledger</h2><span class="statusBadge" id="paymentLedgerCount">0 records</span></div><div class="paymentLedgerTools"><input id="paymentSearch" placeholder="ค้นหา Invoice / Customer / Reference / Receipt No...." oninput="seneiRenderPaymentLedger()"></div><div class="paymentTableWrap"><table class="paymentTable"><thead><tr><th>Date</th><th>Invoice / Customer</th><th>Type</th><th>Method / Reference</th><th>Currency</th><th style="text-align:right">Amount</th><th>Receipt / Action</th></tr></thead><tbody id="paymentLedgerBody"></tbody></table></div></div>
+        </div>
+      </section>
+
+      <section class="reportsView" id="reportsView" style="display:none">
+        <div class="reportsHeader"><div><h1>Reports &amp; Payment Summary</h1><p>ภาพรวม Invoice ยอดรับชำระ และยอดค้างจากข้อมูลจริงในเครื่องนี้</p></div><button class="btn blue" type="button" onclick="seneiShowDashboard()">&larr; Back to Dashboard</button></div>
+        <div class="reportFilters">
+          <div><label>PAYMENT FROM</label><input id="reportFrom" type="date" onchange="seneiRenderReports()"></div>
+          <div><label>PAYMENT TO</label><input id="reportTo" type="date" onchange="seneiRenderReports()"></div>
+          <div><label>INVOICE STATUS</label><select id="reportStatus" onchange="seneiRenderReports()"><option value="">All Statuses</option><option>Unpaid</option><option>Deposit Paid</option><option>Partially Paid</option><option>Paid</option><option>Overpaid</option></select></div>
+          <div style="flex:1;min-width:220px"><label>SEARCH</label><input id="reportSearch" placeholder="Invoice No. / Customer / Tour..." oninput="seneiRenderReports()"></div>
+          <button class="btn blue" type="button" onclick="seneiSetReportThisMonth()">This Month</button>
+          <button class="btn gray" type="button" onclick="seneiClearReportFilters()">All Time</button>
+          <button class="btn gold" type="button" onclick="seneiExportReportCSV()">Export CSV</button>
+        </div>
+        <div class="reportMetrics">
+          <div class="reportMetric"><small>TOTAL INVOICED</small><strong id="reportInvoiced">JPY 0</strong></div>
+          <div class="reportMetric"><small>CURRENT OUTSTANDING</small><strong id="reportOutstanding">JPY 0</strong></div>
+          <div class="reportMetric"><small>RECEIVED JPY · FILTERED PERIOD</small><strong id="reportReceivedJpy">JPY 0</strong></div>
+          <div class="reportMetric"><small>RECEIVED THB · FILTERED PERIOD</small><strong id="reportReceivedThb">THB 0</strong></div>
+        </div>
+        <div class="reportGrid">
+          <div class="reportCard"><div class="reportCardHead"><h2>Invoice Status</h2><span class="statusBadge" id="reportInvoiceCount">0 invoices</span></div><div class="reportTableWrap"><table class="reportTable"><thead><tr><th>Invoice</th><th>Customer / Tour</th><th class="amount">Total JPY</th><th class="amount">Received JPY Eq.</th><th class="amount">Outstanding</th><th>Status</th></tr></thead><tbody id="reportInvoiceBody"></tbody></table></div><div class="reportNote">ยอด THB ถูกแปลงเป็น JPY ด้วย Rate ที่บันทึกอยู่ใน Invoice แต่ละใบ รายงานนี้ไม่แก้ไขข้อมูลต้นฉบับ</div></div>
+          <div>
+            <div class="reportCard"><div class="reportCardHead"><h2>Status Summary</h2></div><div class="reportTableWrap"><table class="reportTable compact"><thead><tr><th>Status</th><th class="amount">Invoices</th><th class="amount">Outstanding JPY</th></tr></thead><tbody id="reportStatusBody"></tbody></table></div></div>
+            <div class="reportCard"><div class="reportCardHead"><h2>Monthly Payment Activity</h2></div><div class="reportTableWrap"><table class="reportTable compact"><thead><tr><th>Month</th><th class="amount">Payments</th><th class="amount">JPY</th><th class="amount">THB</th></tr></thead><tbody id="reportMonthlyBody"></tbody></table></div></div>
+          </div>
+        </div>
+        <div class="reportCard">
+          <div class="reportCardHead"><h2>Outstanding Aging</h2><div class="agingToolbar"><label>AS OF DATE</label><input id="agingAsOf" type="date" onchange="seneiRenderReports()"><button class="btn blue" type="button" onclick="seneiExportAgingCSV()">Export Aging CSV</button></div></div>
+          <div class="agingMetrics" id="agingMetrics"></div>
+          <div class="reportTableWrap"><table class="reportTable"><thead><tr><th>Invoice</th><th>Customer / Tour</th><th>Due Date Source</th><th>Age</th><th class="amount">Outstanding JPY</th><th>Status</th></tr></thead><tbody id="agingInvoiceBody"></tbody></table></div>
+          <div class="reportNote">Aging ใช้ Deposit Due Date ที่บันทึกใน Invoice เท่านั้น หาก Invoice ไม่มี Due Date ระบบจะแสดง “No Due Date” และจะไม่เดาวันครบกำหนดจาก Date of Issue</div>
+        </div>
+        <div class="reportCard"><div class="reportCardHead"><h2>Customer Outstanding</h2><span class="statusBadge" id="agingCustomerCount">0 customers</span></div><div class="reportTableWrap"><table class="reportTable"><thead><tr><th>Customer</th><th class="amount">Open Invoices</th><th class="amount">Outstanding JPY</th><th>Oldest Due</th><th>Aging Risk</th></tr></thead><tbody id="agingCustomerBody"></tbody></table></div></div>
+      </section>
+
+      <!-- ============ INVOICE VIEW — wraps the EXISTING, UNCHANGED V12 app ============ -->
+      <div class="invoiceView" id="invoiceView" style="display:none">
+        <div class="backBar"><button class="backToDash" onclick="seneiShowDashboard()">&larr; Back to Dashboard</button></div>
+<div class="app">
+  <div class="panel">
+    <h2><span>Create Invoice <span class="version">SENEI Flow · V13.4 Aging Candidate</span></span></h2>
+    <div class="group" id="grp-newinvoice"><h3>ข้อมูลเอกสาร</h3>
+      <label>Customer Name</label><textarea id="customer" class="customerInput">Shinki Japan Traveler</textarea><div class="small">กด Alt+Enter เพื่อขึ้นบรรทัดใหม่ได้</div>
+      <label>Tour Name / T. NAME</label><input id="tname" value="Shinki Japan Traveler">
+      <label>T. DATE</label><input id="tdate" value="18 , 22 FEB'27">
+      <label>NO. OF PAX / จำนวนลูกค้า</label><input id="pax" value="" placeholder="เช่น 3 pax">
+      <label>Invoice No.</label><input id="invoiceNo" value="" placeholder="กด Generate Invoice No. หรือกรอกเอง">
+      <div class="row"><div><label>Date of Issue</label><input type="date" id="issueDate"></div><div><label>Rate JPY → THB</label><input type="number" step="0.001" id="rate" value="0.21"></div></div>
+      <label class="checkline compactCheck"><input type="checkbox" id="autoDays" checked> นับจำนวนวันอัตโนมัติจากช่อง Date เช่น 22-24 FEB = 3 วัน</label>
+    </div>
+
+    <div class="group" id="grp-deposit"><h3>แบ่งจ่าย Deposit / Final</h3>
+      <label><input type="checkbox" id="useDeposit" style="width:auto" onchange="render()"> ใช้ระบบแบ่งจ่าย Deposit</label>
+      <div class="row3">
+        <div><label>Deposit %</label><input type="number" id="depositPct" value="30" min="0" max="100" oninput="render()"></div>
+        <div><label>Deposit Due Date</label><input type="date" id="depositDue" oninput="render()"></div>
+        <div><label>ข้อความ Final</label><input id="finalText" value="FINAL PAY" oninput="render()"></div>
+      </div>
+      <div class="small">เมื่อเปิดใช้งาน ระบบจะแสดงยอด Deposit และ Final Pay แยกในใบแจ้งหนี้ คล้ายตัวอย่าง Shinki Japan Traveler</div>
+    </div>
+
+    <div class="group"><h3>รายการ Invoice</h3><div id="items"></div><button class="btn gold" onclick="addItem()">+ Add Item</button></div>
+
+    <div class="group"><h3>ข้อความ / ธนาคาร</h3>
+      <label>หมายเหตุสีแดงด้านบน</label><textarea id="notice">หมายเหตุ ทางบริษัทจะยึดวันที่การจองตามใบวางบิลเป็นหลักเท่านั้น หากมีการเปลี่ยนแปลงกรุณาโทรแจ้ง เพื่อเช็ควันอัพเดทอีกครั้งเท่านั้น</textarea>
+      <label>แถบเหลือง</label><input id="busNote" value="BUS SERVICE [10 HRS. ] DURING 8:00-18:00 ONLY OVERTIME EVERY 30 MINS 5,000 JPY">
+      <label>หมายเหตุอัตราแลกเปลี่ยน</label><input id="rateNote" value="หมายเหตุ : อ้างอิงอัตราแลกเปลี่ยนค่าเงิน">
+      <label>บัญชีญี่ปุ่น</label><textarea id="jpBank">みずほ普通預金　新宿中央支店
+店番号：066
+普通預金口座番号：4338939
+口座名：センエイコウツウ(カ　サマ</textarea>
+      <label>บัญชีไทย</label><textarea id="thBank">Please pay to
+ACC NAME: THANYAPAT JIRAYUTJAROENSUK
+BANK NAME : SCB
+ACC NO: 127-228-4290
+BRANCH :CHOKCHAI4</textarea>
+      <label>Cancellation Fee</label><textarea id="cancel">CANCELLATION FEE
+- NOTIFY BEFORE GROUP DURATION 20 DAYS MUST BE GOOD
+- NOTIFY BEFORE GROUP DURATION 15 DAYS MUST BE 30% FOR TOUR FARE
+- NOTIFY BEFORE GROUP DURATION10 DAYS MUST BE 50% FOR TOUR FARE
+- NOTIFY BEFORE GROUP DURATION 7 DAYS MUST BE 100% FOR TOUR FARE</textarea>
+    </div>
+
+
+    <div class="group typographyStudio"><h3>Typography Studio — ปรับฟอนต์เอกสาร</h3>
+      <div class="small">เลือกชื่อฟอนต์ ขนาด และสีแยกแต่ละส่วนได้อิสระ ค่าจะถูกบันทึกไปกับ Invoice</div>
+      <div id="typographyControls"></div>
+      <div class="toolbar"><button class="btn blue" type="button" onclick="applyTypographyPreset('clean')">SENEI Clean</button><button class="btn blue" type="button" onclick="applyTypographyPreset('large')">อ่านง่าย</button><button class="btn gray" type="button" onclick="resetTypography()">คืนค่าเริ่มต้น</button></div>
+    </div>
+    <div class="group" id="grp-customerdb"><h3>Auto Invoice No. / Customer Database</h3>
+      <div class="row">
+        <div><label>Prefix เลข Invoice</label><input id="invoicePrefix" value="SK" oninput="render()"></div>
+        <div><label>Running No.</label><input type="number" id="invoiceSeq" value="1" min="1"></div>
+      </div>
+      <div class="toolbar">
+        <button class="btn gold" onclick="generateInvoiceNo()">Generate Invoice No.</button>
+        <button class="btn blue" onclick="saveCustomer()">Save / Update Customer</button>
+      </div>
+      <div class="appNote"><b>วิธีใช้ฐานข้อมูลลูกค้า:</b> ใส่ Customer Name / T.NAME / T.DATE ด้านบน → กด <b>Save / Update Customer</b>. เมื่อต้องการใช้ซ้ำ ให้เลือกชื่อจากรายการ แล้วกด <b>Load Selected</b>.</div>
+      <label>เลือกลูกค้าที่บันทึกไว้</label>
+      <select id="customerSelect" class="customerSelect" onchange="previewCustomerRecord(this.value)"><option value="">-- เลือกลูกค้าที่บันทึกไว้ --</option></select>
+      <div class="toolbar">
+        <button class="btn blue" onclick="loadSelectedCustomer()">Load Selected</button>
+        <button class="btn gold" onclick="saveCustomer()">Update Selected</button>
+        <button class="btn red" onclick="deleteSelectedCustomer()">Delete Selected</button>
+      </div>
+      <div class="dbFields">
+        <div class="row"><div><label>Email</label><input id="dbEmail" placeholder="email ลูกค้า"></div><div><label>Tel</label><input id="dbPhone" placeholder="เบอร์โทร"></div></div>
+        <label>Address / Note ลูกค้า</label><textarea id="dbNote" placeholder="ที่อยู่ / หมายเหตุลูกค้าเพิ่มเติม"></textarea>
+      </div>
+      <input id="customerSearch" class="searchInput" placeholder="ค้นหาลูกค้า / Tour Name / Email / Tel..." oninput="renderCustomerList()">
+      <div class="dbTools">
+        <button class="btn slim" onclick="exportCustomers()">Backup Customers</button>
+        <button class="btn slim blue" onclick="triggerImport('customers')">Restore Customers</button>
+        <button class="btn slim red" onclick="clearCustomerForm()">Clear Customer Form</button>
+      </div>
+      <div id="customerStatus" class="customerStatus"></div>
+      <div id="customerList" class="dbList"></div>
+    </div>
+
+    <div class="group" id="grp-history"><h3>Invoice History</h3>
+      <div class="toolbar">
+        <button class="btn gold" onclick="saveInvoiceHistory()">Save to History</button>
+        <button class="btn blue" onclick="duplicateInvoice()">Duplicate Invoice</button>
+        <button class="btn gray" onclick="newInvoice()">New Invoice</button>
+      </div>
+      <div class="small">บันทึกหลายใบ / เปิดแก้ไข / ทำสำเนา / ลบ ได้ในเครื่องนี้</div>
+      <input id="historySearch" class="searchInput" placeholder="ค้นหา Invoice No. / ลูกค้า / T.Name..." oninput="renderHistoryList()">
+      <div class="dbTools">
+        <button class="btn slim" onclick="exportHistory()">Backup History</button>
+        <button class="btn slim blue" onclick="triggerImport('history')">Restore History</button>
+        <button class="btn slim gold" onclick="exportAllData()">Backup All</button>
+        <button class="btn slim blue" onclick="triggerImport('all')">Restore All</button>
+      </div>
+      <div id="historyList" class="dbList"></div>
+    </div>
+
+    <div class="group"><h3>V13.1 Payment / Static Hosting Ready</h3>
+      <div class="appNote"><b>SENEI Flow V13.1 Payment</b> เก็บ Invoice, Customer, History และ Payment ใน Local Storage พร้อม Backup/Restore JSON และใช้ A4 Renderer ในโฟลเดอร์เดียวกัน</div>
+    </div>
+
+    <input type="file" id="importFile" accept="application/json" style="display:none" onchange="handleImportFile(event)">
+    <div class="btns">
+      <button class="btn" onclick="saveData()">Save Current</button>
+      <button class="btn" onclick="loadData()">Load Current</button>
+      <button class="btn gold" onclick="saveInvoiceHistory()">Save Invoice</button>
+      <button class="btn red" onclick="localStorage.removeItem(KEY);alert('Clear saved data')">Clear Save</button>
+      <button class="btn gold" onclick="printInvoice()">Print / Save PDF</button>
+    </div>
+  </div>
+  <div class="previewWrap" id="previewWrap"><div class="previewScale" id="previewScale"><div id="paper" class="paper" contenteditable="true"></div></div></div>
+</div>
+        <button class="jumpBottomFloat" id="jumpBottomFloat" type="button" onclick="seneiScrollEditorBottom()" aria-label="เลื่อนไปด้านล่างสุดของหน้ากรอกข้อมูล">&darr; ไปด้านล่างสุด</button>
+      </div><!-- /invoiceView -->
+    </main>
+  </div><!-- /shellBody -->
+</div><!-- /shell -->
+
+<script>
+const LOGO='data:image/png;base64,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';
+const KEY='senei_invoice_v10_data';
+const HISTORY_KEY='senei_invoice_history_v10';
+const CUSTOMER_KEY='senei_customer_db_v10';
+const SEQ_KEY='senei_invoice_seq_v10';
+const PAYMENT_KEY='senei_payment_records_v13';
+const RECEIPT_SEQ_KEY='senei_receipt_seq_v13';
+let items=[
+  {date:'18 Feb',detail:'Big Bus\nค่าคั่งรถ (Kaiso) + highway\nNarita Ariport --> Hotel Lucent Takamiya',net:216060,no:1,style:''},
+  {date:'22 Feb',detail:'Big Bus\nค่าคั่งรถ (Kaiso) + highway\nHotel Lucent Takamiya --> Narita Airport',net:216060,no:1,style:''},
+  {date:'',detail:'EXC.\nHOTEL / OCHADAI DV.(3,000Yen/Day)',net:0,no:0,style:'red'}
+];
+
+function $(id){return document.getElementById(id)}
+function fmt(n){return Math.round(Number(n||0)).toLocaleString('en-US')}
+function today(){return new Date().toISOString().slice(0,10)}
+function addDays(days){const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10)}
+function dateText(v){if(!v)return ''; const d=new Date(v+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}).replace(',','')}
+function dueText(v){if(!v)return ''; const d=new Date(v+'T00:00:00'); return d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'}).toUpperCase().replace(',','')}
+function esc(s){return String(s??'').replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+function nl(s){return esc(s).replace(/\n/g,'<br>')}
+function cleanNotice(s){return String(s??'').trim().replace(/^\*\*\s*/,'').replace(/\s*\*\*$/,'')}
+
+function monthIndex(m){
+  const map={JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUNE:5,JUL:6,JULY:6,AUG:7,SEP:8,SEPT:8,OCT:9,NOV:10,DEC:11};
+  return map[String(m||'').toUpperCase().replace(/[^A-Z]/g,'')];
+}
+function baseYear(){
+  const issue=($('issueDate')?.value||'').slice(0,4);
+  const y=Number(issue);
+  return y||new Date().getFullYear();
+}
+function inclusiveDays(d1,d2){
+  const ms=24*60*60*1000;
+  const diff=Math.round((d2-d1)/ms)+1;
+  return diff>0 && diff<370 ? diff : null;
+}
+function autoDaysFromDate(text){
+  const t=String(text||'').toUpperCase().replace(/[–—]/g,'-').replace(/\s+/g,' ').trim();
+  if(!t || t.includes(',')) return null;
+  let m=t.match(/^(\d{1,2})\s*-\s*(\d{1,2})\s*([A-Z]{3,9})/);
+  if(m){
+    const y=baseYear(), mi=monthIndex(m[3]); if(mi===undefined)return null;
+    return inclusiveDays(new Date(y,mi,Number(m[1])), new Date(y,mi,Number(m[2])));
+  }
+  m=t.match(/^(\d{1,2})\s*([A-Z]{3,9})\s*-\s*(\d{1,2})\s*([A-Z]{3,9})/);
+  if(m){
+    let y=baseYear(), m1=monthIndex(m[2]), m2=monthIndex(m[4]); if(m1===undefined||m2===undefined)return null;
+    let d1=new Date(y,m1,Number(m[1])), d2=new Date(y,m2,Number(m[3]));
+    if(d2<d1)d2=new Date(y+1,m2,Number(m[3]));
+    return inclusiveDays(d1,d2);
+  }
+  m=t.match(/^(\d{1,2})\s+([A-Z]{3,9})/);
+  if(m) return 1;
+  return null;
+}
+function effectiveNo(it){
+  if($('autoDays')?.checked){
+    const days=autoDaysFromDate(it.date);
+    if(days) return days;
+  }
+  return Number(it.no||0);
+}
+
+function drawItems(){
+  const box=$('items'); box.innerHTML='';
+  items.forEach((it,i)=>{
+    const div=document.createElement('div'); div.className='itemBox';
+    div.dataset.itemLabel=`ITEM ${i+1}`;
+    const calculatedDays=$('autoDays')?.checked?autoDaysFromDate(it.date):null;
+    const noValue=calculatedDays||it.no;
+    div.innerHTML=`<div class="row"><div><label>Date</label><input value="${esc(it.date)}" oninput="items[${i}].date=this.value;refreshAutoNo(${i});render()"></div><div><label>Style</label><select onchange="items[${i}].style=this.value;render()"><option value="" ${!it.style?'selected':''}>Normal</option><option value="blue" ${it.style==='blue'?'selected':''}>Blue</option><option value="red" ${it.style==='red'?'selected':''}>Red</option></select></div></div>
+    <label>Detail</label><textarea oninput="items[${i}].detail=this.value;render()">${esc(it.detail)}</textarea>
+    <div class="row"><div><label>NET</label><input type="number" value="${it.net}" oninput="items[${i}].net=this.value;render()"></div><div><label>NO</label><input id="itemNo-${i}" type="number" class="${calculatedDays?'autoComputed':''}" value="${noValue}" ${calculatedDays?'readonly':''} oninput="items[${i}].no=this.value;render()"><span id="autoResult-${i}" class="autoResult">${calculatedDays?`คำนวณอัตโนมัติจาก Date = ${calculatedDays} วัน`:''}</span></div></div>
+    <div class="itemActions"><button class="btn gray" onclick="moveItem(${i},-1)" ${i===0?'disabled':''}>↑ Up</button><button class="btn gray" onclick="moveItem(${i},1)" ${i===items.length-1?'disabled':''}>↓ Down</button><button class="btn red" onclick="removeItem(${i})">Delete</button></div>`;
+    box.appendChild(div);
+  });
+}
+function refreshAutoNo(i){
+  const input=$(`itemNo-${i}`), note=$(`autoResult-${i}`); if(!input)return;
+  const days=$('autoDays')?.checked?autoDaysFromDate(items[i]?.date):null;
+  input.value=days||items[i]?.no||0; input.readOnly=!!days; input.classList.toggle('autoComputed',!!days);
+  if(note)note.textContent=days?`คำนวณอัตโนมัติจาก Date = ${days} วัน`:'';
+}
+function addItem(data={date:'',detail:'',net:0,no:1,style:''}){items.push(data);drawItems();render()}
+function removeItem(i){items.splice(i,1);drawItems();render()}
+function moveItem(i,dir){const j=i+dir;if(j<0||j>=items.length)return;[items[i],items[j]]=[items[j],items[i]];drawItems();render()}
+
+const TYPO_SECTIONS=[
+  ['body','เอกสารโดยรวม',12.5,'#172033'],['company','หัวบริษัท',17,'#173154'],['title','หัวข้อ 請求書',26,'#173154'],
+  ['info','ข้อมูลลูกค้า/ทัวร์',12,'#172033'],['notice','หมายเหตุด้านบน',10,'#b42318'],['table','ตารางรายการ',10.5,'#172033'],
+  ['jpy','ยอดเงิน JPY',16,'#b42318'],['thb','ยอดเงิน THB',16,'#2458a6'],['payment','Deposit / Final',11,'#b42318'],['bank','ข้อมูลธนาคาร',10,'#172033'],['cancel','Cancellation',9,'#a9322b']
+];
+const FONT_OPTIONS=['Arial','Tahoma','Verdana','Trebuchet MS','Georgia','Times New Roman','Noto Sans Thai','Yu Gothic','Meiryo','Courier New'];
+function renderTypographyControls(){
+  const box=$('typographyControls'); if(!box)return;
+  box.innerHTML=TYPO_SECTIONS.map(([key,label,size,color])=>`<div class="typoRow"><strong>${label}</strong><label>Font<select id="typo-${key}-family">${FONT_OPTIONS.map(f=>`<option value="${f}" ${f==='Tahoma'?'selected':''}>${f}</option>`).join('')}</select></label><label>Size<input id="typo-${key}-size" type="number" min="6" max="40" step="0.5" value="${size}"></label><label>Color<input id="typo-${key}-color" type="color" value="${color}"></label></div>`).join('');
+  box.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',updateTypography));
+  $('typo-body-family')?.addEventListener('input',()=>applyMasterTypography('family'));
+  $('typo-body-color')?.addEventListener('input',()=>applyMasterTypography('color'));
+}
+function applyMasterTypography(property){
+  const value=$(`typo-body-${property}`)?.value; if(!value)return;
+  TYPO_SECTIONS.filter(([key])=>key!=='body').forEach(([key])=>{const el=$(`typo-${key}-${property}`);if(el)el.value=value;}); updateTypography();
+}
+function getTypography(){
+  const out={}; TYPO_SECTIONS.forEach(([key,,size,color])=>out[key]={family:$(`typo-${key}-family`)?.value||'Tahoma',size:Number($(`typo-${key}-size`)?.value||size),color:$(`typo-${key}-color`)?.value||color}); return out;
+}
+function legacyTypography(d={}){
+  const n=(value,fallback)=>{const x=Number(value);return Number.isFinite(x)&&x>0?x:fallback};
+  if(!['docFont','companyFont','titleFont','tableFont','smallFont'].some(k=>d[k]!==undefined))return {};
+  const body=n(d.docFont,12.5), small=n(d.smallFont,9);
+  const make=(size,color)=>({family:'Tahoma',size,color});
+  return {
+    body:make(body,'#172033'),company:make(n(d.companyFont,17),'#173154'),title:make(n(d.titleFont,26),'#173154'),
+    info:make(body,'#172033'),notice:make(Math.max(6,small),'#b42318'),table:make(n(d.tableFont,10.5),'#172033'),
+    jpy:make(16,'#b42318'),thb:make(16,'#2458a6'),payment:make(Math.max(9,small),'#b42318'),
+    bank:make(Math.max(8,small),'#172033'),cancel:make(Math.max(7,small),'#a9322b')
+  };
+}
+function setTypography(data={}){
+  TYPO_SECTIONS.forEach(([key,,size,color])=>{const v=data[key]||{}; if($(`typo-${key}-family`))$(`typo-${key}-family`).value=v.family||'Tahoma'; if($(`typo-${key}-size`))$(`typo-${key}-size`).value=v.size||size; if($(`typo-${key}-color`))$(`typo-${key}-color`).value=v.color||color;}); updateTypography();
+}
+function updateTypography(){
+  const root=document.documentElement, data=getTypography(); Object.entries(data).forEach(([key,v])=>{root.style.setProperty(`--typo-${key}-family`, `'${v.family.replace(/'/g,'')}'`);root.style.setProperty(`--typo-${key}-size`,v.size+'px');root.style.setProperty(`--typo-${key}-color`,v.color);}); root.style.setProperty('--typo-body-scale',String((data.body?.size||12.5)/12.5)); requestAnimationFrame(()=>{fitDocumentToA4();fitPreview()});
+}
+function applyTypographyPreset(name){
+  const sizes=name==='large'?[14,19,29,13.5,11,11.5,19,19,12.5,11,10]:[12.5,17,26,12,10,10.5,16,16,11,10,9];
+  TYPO_SECTIONS.forEach(([key],i)=>{if($(`typo-${key}-size`))$(`typo-${key}-size`).value=sizes[i];}); updateTypography();
+}
+function resetTypography(){setTypography({})}
+function updateDocFonts(){updateTypography()}
+function applyPreset(){updateTypography()}
+
+function collect(){
+  return {
+    customer:$('customer').value,tname:$('tname').value,tdate:$('tdate').value,pax:$('pax')?.value||'',invoiceNo:$('invoiceNo').value,
+    issueDate:$('issueDate').value,rate:$('rate').value,notice:$('notice').value,busNote:$('busNote').value,
+    rateNote:$('rateNote').value,jpBank:$('jpBank').value,thBank:$('thBank').value,cancel:$('cancel').value,
+    useDeposit:$('useDeposit').checked,depositPct:$('depositPct').value,depositDue:$('depositDue').value,finalText:$('finalText').value,invoicePrefix:$('invoicePrefix')?.value||'SK',invoiceSeq:$('invoiceSeq')?.value||'1',
+    typography:getTypography(),autoDays:$('autoDays')?.checked,items
+  }
+}
+
+
+function fitPreview(){
+  const wrap=$('previewWrap'), scale=$('previewScale');
+  if(!wrap||!scale) return;
+  if(window.matchMedia('print').matches){scale.style.zoom='1';scale.style.transform='none';scale.style.height='auto';return;}
+  /* Keep equal visual breathing room on both sides of the A4 canvas. */
+  const available=Math.max(260, wrap.clientWidth-72);
+  const base=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--paper-w'))||1120;
+  const ratio=Math.min(1, available/base);
+  scale.style.transform='none';
+  scale.style.zoom=String(ratio);
+  scale.style.width=base+'px';
+  scale.style.height='auto';
+}
+
+function fitDocumentToA4(){
+  const paper=$('paper'), doc=paper?.querySelector('.flowDoc'); if(!paper||!doc)return 1;
+  doc.style.transform='none'; doc.style.zoom='1'; doc.style.width='100%';
+  const cs=getComputedStyle(paper);
+  const target=Math.max(1,paper.clientHeight-parseFloat(cs.paddingTop||0)-parseFloat(cs.paddingBottom||0));
+  const natural=Math.max(1,doc.scrollHeight);
+  const ratio=Math.min(1,target/natural);
+  doc.style.width=(100/ratio)+'%';
+  doc.style.zoom=String(ratio);
+  paper.dataset.contentScale=ratio.toFixed(3);
+  return ratio;
+}
+
+function printInvoice(){
+  const payload={data:collect(),items:items.map(it=>({...it,effectiveNo:effectiveNo(it)})),logo:LOGO};
+  try{sessionStorage.setItem('senei_a4_payload_v1',JSON.stringify(payload))}catch(e){}
+  /* Open a fresh, unversioned local file every time. Query-string cache
+     busters can break file:// URLs on some browsers/operating systems. */
+  const renderer=window.open('senei_kotsu_a4_renderer_v1.html','_blank');
+  if(!renderer){alert('เบราว์เซอร์บล็อกหน้าต่าง A4 Renderer กรุณาอนุญาต Pop-up แล้วลองใหม่');return}
+  const send=()=>{try{renderer.postMessage({type:'senei-render-invoice',payload},'*')}catch(e){}};
+  const ready=e=>{if(e.source===renderer&&e.data?.type==='senei-a4-renderer-ready'){send();window.removeEventListener('message',ready)}};
+  window.addEventListener('message',ready);setTimeout(send,500);setTimeout(send,1400);
+}
+
+function render(){
+  const d=collect();
+  const total=items.reduce((s,it)=>s+(Number(it.net||0)*effectiveNo(it)),0);
+  const rate=Number(d.rate||0);
+  const thb=total*rate;
+  const depPct=Math.max(0,Math.min(100,Number(d.depositPct||0)));
+  const depJPY=Math.round(total*depPct/100);
+  const finJPY=total-depJPY;
+  const depTHB=Math.round(depJPY*rate);
+  const finTHB=Math.round(finJPY*rate);
+  const rows=items.map(it=>{
+    const noVal=effectiveNo(it);
+    const lineTotal=Number(it.net||0)*noVal;
+    const cls=it.style==='blue'?'blueText':it.style==='red'?'redText':'';
+    const isExcNote = it.style==='red' && !Number(it.net||0) && !noVal;
+    if(isExcNote){
+      return `<tr class="flowExc"><td>${nl(it.date)}</td><td class="${cls}">${nl(it.detail)}</td><td></td><td></td><td></td></tr>`;
+    }
+    return `<tr><td>${nl(it.date)}</td><td class="${cls}">${nl(it.detail)}</td><td class="num">${Number(it.net||0)?fmt(it.net):'—'}</td><td class="num">${noVal?fmt(noVal):'—'}</td><td class="num">${lineTotal?fmt(lineTotal):'—'}</td></tr>`;
+  }).join('');
+
+  const currencyBlock = d.useDeposit ? `<section class="flowPaymentMatrix">
+    <div class="flowPayCurrency thb"><div class="flowPayHead"><small>THAI BAHT · 100%</small><b>THB ${fmt(thb)}</b></div><div class="flowPayLine"><span>DEPOSIT ${fmt(depPct)}%</span><b>= THB ${fmt(depTHB)}</b>${d.depositDue?`<em>DUE ${dueText(d.depositDue)}</em>`:''}</div><div class="flowPayLine"><span>${esc(d.finalText)} ${fmt(100-depPct)}%</span><b>= THB ${fmt(finTHB)}</b></div></div>
+    <div class="flowPayCurrency jpy"><div class="flowPayHead"><small>JAPANESE YEN · 100%</small><b>JPY ${fmt(total)}</b></div><div class="flowPayLine"><span>DEPOSIT ${fmt(depPct)}%</span><b>= JPY ${fmt(depJPY)}</b>${d.depositDue?`<em>DUE ${dueText(d.depositDue)}</em>`:''}</div><div class="flowPayLine"><span>${esc(d.finalText)} ${fmt(100-depPct)}%</span><b>= JPY ${fmt(finJPY)}</b></div></div>
+    </section>` : `<section class="flowCurrency"><div class="thb"><small>THAI BAHT REFERENCE</small><span>THB</span><b>${fmt(thb)}</b></div><div class="jpy"><small>JAPANESE YEN TOTAL</small><span>JPY</span><b>${fmt(total)}</b></div></section>`;
+
+  $('paper').innerHTML=`<article class="flowDoc">
+  <header class="flowHead"><img src="${LOGO}" alt="SENEI KOTSU"><div><b>SENEI KOTSU Co., Ltd</b><span>JAPAN ASSOCIATION OF TRAVEL AGENTS MEMBER</span><span>TOKYO GOVERNOR'S REGISTERED TRAVEL AGENCY NO. 2-7928 · 〒160-0022</span><span>4-1-22 SHINJUKU, SHINJUKU-KU, TOKYO · TEL 03-6709-8156</span></div></header>
+  <section class="flowTitle"><div><h1>請求書</h1><span>INVOICE</span></div></section>
+  <section class="flowInfo"><div class="flowCustomer"><small>BILL TO / CUSTOMER</small><b>${nl(d.customer)||'—'}</b></div><div><div class="flowInfoLine"><small>TOUR NAME</small><b>${esc(d.tname)||'—'}</b></div><div class="flowInfoLine"><small>TOUR DATE</small><b>${esc(d.tdate)||'—'}</b></div><div class="flowInfoLine"><small>NO. OF PAX</small><b>${esc(d.pax)||'—'}</b></div></div><div><div class="flowInfoLine"><small>DATE OF ISSUE</small><b>${dateText(d.issueDate)||'—'}</b></div><div class="flowInfoLine"><small>INVOICE NO.</small><b>${esc(d.invoiceNo)||'—'}</b></div></div></section>
+  <section class="flowNotice">${nl(cleanNotice(d.notice).replace(/\s*\n+\s*/g,' '))}</section>
+  <table class="flowItems"><colgroup><col class="cDate"><col class="cDetail"><col class="cNet"><col class="cQty"><col class="cTotal"></colgroup><thead><tr><th>DATE</th><th>SERVICE DETAIL</th><th>NET</th><th>NO.</th><th>TOTAL (JPY)</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="flowBus">${esc(d.busNote)}</div>
+  <div class="flowRateNote">${esc(d.rateNote)} · 1 JPY = ${esc(d.rate)} THB</div>${currencyBlock}
+  <section class="flowBanks"><div><h3>PAYMENT INFORMATION</h3>${nl(d.thBank)}</div><div><h3>JAPANESE BANK DETAILS</h3>${nl(d.jpBank)}</div></section>
+  <section class="flowCancel"><h3>CANCELLATION POLICY</h3>${nl(d.cancel)}</section>
+  </article>`;
+  requestAnimationFrame(()=>{fitDocumentToA4();fitPreview()});
+}
+
+
+let importMode='';
+function downloadJSON(name,data){
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove();},300);
+}
+function stamp(){return new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}
+function exportCustomers(){downloadJSON('senei-customers-'+stamp()+'.json',{type:'senei-customers-v12',customers:getCustomers()})}
+function exportHistory(){downloadJSON('senei-invoice-history-'+stamp()+'.json',{type:'senei-history-v12',history:getHistory()})}
+function exportAllData(){downloadJSON('senei-invoice-app-backup-'+stamp()+'.json',{type:'senei-all-v13.2',current:collect(),customers:getCustomers(),history:getHistory(),payments:typeof seneiGetPayments==='function'?seneiGetPayments():[],seq:localStorage.getItem(SEQ_KEY)||'1',receiptSeq:localStorage.getItem(RECEIPT_SEQ_KEY)||'1'})}
+function triggerImport(mode){importMode=mode; const f=$('importFile'); if(f){f.value=''; f.click();}}
+function handleImportFile(ev){
+  const file=ev.target.files&&ev.target.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      if(importMode==='customers'){
+        const arr=Array.isArray(data)?data:data.customers;
+        if(!Array.isArray(arr)) throw new Error('ไม่พบข้อมูล customers');
+        if(confirm('Restore Customer Database? ข้อมูลเดิมจะถูกแทนที่')) setCustomers(arr);
+      }else if(importMode==='history'){
+        const arr=Array.isArray(data)?data:data.history;
+        if(!Array.isArray(arr)) throw new Error('ไม่พบข้อมูล history');
+        if(confirm('Restore Invoice History? ข้อมูลเดิมจะถูกแทนที่')) setHistory(arr);
+      }else if(importMode==='payments'){
+        const arr=Array.isArray(data)?data:data.payments;
+        if(!Array.isArray(arr)) throw new Error('ไม่พบข้อมูล payments');
+        if(!confirm('Restore Payment Records? ข้อมูล Payment เดิมจะถูกแทนที่')) return;
+        if(typeof seneiSetPayments!=='function') throw new Error('Payment module is not available');
+        seneiSetPayments(arr);
+      }else if(importMode==='all'){
+        if(!confirm('Restore All Data? Current / Customers / History จะถูกแทนที่')) return;
+        if(data.current) applyData(data.current);
+        if(Array.isArray(data.customers)) setCustomers(data.customers);
+        if(Array.isArray(data.history)) setHistory(data.history);
+        if(Array.isArray(data.payments) && typeof seneiSetPayments==='function') seneiSetPayments(data.payments);
+        if(data.seq){localStorage.setItem(SEQ_KEY,String(data.seq));if($('invoiceSeq'))$('invoiceSeq').value=String(data.seq);}
+        if(data.receiptSeq){localStorage.setItem(RECEIPT_SEQ_KEY,String(data.receiptSeq));}
+      }
+      renderCustomerList(); renderHistoryList(); render(); if(typeof seneiRefreshPaymentModule==='function')seneiRefreshPaymentModule(); alert('Restore สำเร็จ');
+    }catch(e){alert('Import ไม่สำเร็จ: '+e.message)}
+  };
+  reader.readAsText(file);
+}
+
+function saveData(){localStorage.setItem(KEY,JSON.stringify(collect()));alert('Saved Data แล้ว')}
+function loadData(){
+  const raw=localStorage.getItem(KEY); if(!raw){alert('ยังไม่มีข้อมูลที่บันทึก');return}
+  const d=JSON.parse(raw);
+  ['customer','tname','tdate','pax','invoiceNo','issueDate','rate','notice','busNote','rateNote','jpBank','thBank','cancel','depositPct','depositDue','finalText','invoicePrefix','invoiceSeq'].forEach(k=>{if($(k) && d[k]!==undefined)$(k).value=d[k]??''});
+  if($('notice'))$('notice').value=cleanNotice($('notice').value);
+  setTypography(d.typography||legacyTypography(d));
+  $('useDeposit').checked=!!d.useDeposit; if($('autoDays')) $('autoDays').checked = d.autoDays!==undefined ? !!d.autoDays : true;
+  items=d.items||[];
+  drawItems(); render(); renderCustomerList(); renderHistoryList(); alert('Loaded Data แล้ว');
+}
+
+function snapshotTitle(d){
+  return (d.invoiceNo||'(No invoice no.)')+' — '+(d.customer||d.tname||'Untitled');
+}
+function getHistory(){try{return JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]')}catch(e){return []}}
+function setHistory(list){localStorage.setItem(HISTORY_KEY,JSON.stringify(list));renderHistoryList()}
+function getCustomers(){try{return JSON.parse(localStorage.getItem(CUSTOMER_KEY)||'[]')}catch(e){return []}}
+function setCustomers(list){localStorage.setItem(CUSTOMER_KEY,JSON.stringify((list||[]).map(normalizeCustomerRecord)));renderCustomerList()}
+function generateInvoiceNo(){
+  const prefix=($('invoicePrefix')?.value||'SK').trim()||'SK';
+  /* Never let an older Current/History record roll the master sequence back. */
+  let seq=Math.max(Number($('invoiceSeq')?.value||0),Number(localStorage.getItem(SEQ_KEY)||0),1);
+  if(!seq || seq<1) seq=1;
+  const y=($('issueDate')?.value||today()).slice(0,4);
+  $('invoiceNo').value=`${prefix}-${y}-${String(seq).padStart(4,'0')}`;
+  $('invoiceSeq').value=seq+1;
+  localStorage.setItem(SEQ_KEY,String(seq+1));
+  render();
+}
+function customerStatus(msg){ const el=$('customerStatus'); if(el) el.textContent=msg||''; }
+function normalizeCustomerRecord(c){
+  return {id:c.id||Date.now(),customer:c.customer||'',tname:c.tname||'',tdate:c.tdate||'',email:c.email||'',phone:c.phone||'',note:c.note||'',updated:c.updated||new Date().toISOString()}
+}
+function currentCustomerRecord(existingId){
+  const d=collect();
+  return normalizeCustomerRecord({
+    id: existingId || Date.now(),
+    customer:d.customer,
+    tname:d.tname,
+    tdate:d.tdate,
+    email:$('dbEmail')?.value||'',
+    phone:$('dbPhone')?.value||'',
+    note:$('dbNote')?.value||'',
+    updated:new Date().toISOString()
+  });
+}
+function saveCustomer(){
+  const name=($('customer').value||'').trim();
+  if(!name){alert('กรุณาใส่ Customer Name ก่อน');return}
+  let list=getCustomers().map(normalizeCustomerRecord);
+  const selectedId=$('customerSelect')?.value||'';
+  let idx= selectedId ? list.findIndex(x=>String(x.id)===String(selectedId)) : -1;
+  if(idx<0) idx=list.findIndex(x=>(x.customer||'').trim().toLowerCase()===name.toLowerCase());
+  const rec=currentCustomerRecord(idx>=0 ? list[idx].id : Date.now());
+  if(idx>=0) list[idx]={...list[idx],...rec}; else list.unshift(rec);
+  list.sort((a,b)=>String(b.updated||'').localeCompare(String(a.updated||'')));
+  setCustomers(list.slice(0,300));
+  if($('customerSelect')) $('customerSelect').value=String(rec.id);
+  customerStatus('บันทึกลูกค้าแล้ว: '+(rec.customer.split('\n')[0]||rec.customer));
+}
+function applyCustomerToForm(c){
+  $('customer').value=c.customer||''; $('tname').value=c.tname||''; $('tdate').value=c.tdate||'';
+  if($('dbEmail')) $('dbEmail').value=c.email||'';
+  if($('dbPhone')) $('dbPhone').value=c.phone||'';
+  if($('dbNote')) $('dbNote').value=c.note||'';
+  if($('customerSelect')) $('customerSelect').value=String(c.id||'');
+  render();
+}
+function loadCustomer(id){
+  const c=getCustomers().map(normalizeCustomerRecord).find(x=>String(x.id)===String(id));
+  if(!c){customerStatus('ไม่พบข้อมูลลูกค้านี้');return;}
+  applyCustomerToForm(c);
+  customerStatus('โหลดข้อมูลลูกค้าแล้ว: '+(c.customer.split('\n')[0]||c.customer));
+}
+function loadSelectedCustomer(){
+  const id=$('customerSelect')?.value;
+  if(!id){alert('กรุณาเลือกลูกค้าก่อน');return}
+  loadCustomer(id);
+}
+function previewCustomerRecord(id){
+  const c=getCustomers().map(normalizeCustomerRecord).find(x=>String(x.id)===String(id));
+  if(!c){clearCustomerExtraFields(false); customerStatus(''); return;}
+  if($('dbEmail')) $('dbEmail').value=c.email||'';
+  if($('dbPhone')) $('dbPhone').value=c.phone||'';
+  if($('dbNote')) $('dbNote').value=c.note||'';
+  customerStatus('เลือกแล้ว: '+(c.customer.split('\n')[0]||c.customer)+' — กด Load Selected เพื่อดึงเข้าใบแจ้งหนี้');
+}
+function deleteCustomer(id){
+  const c=getCustomers().find(x=>String(x.id)===String(id));
+  if(!c)return;
+  if(!confirm('ลบลูกค้านี้?\n'+((c.customer||'').split('\n')[0]||'')))return;
+  setCustomers(getCustomers().filter(x=>String(x.id)!==String(id)));
+  clearCustomerExtraFields(false);
+  customerStatus('ลบข้อมูลลูกค้าแล้ว');
+}
+function deleteSelectedCustomer(){
+  const id=$('customerSelect')?.value;
+  if(!id){alert('กรุณาเลือกลูกค้าก่อน');return}
+  deleteCustomer(id);
+}
+function clearCustomerExtraFields(includeSelect=true){
+  if($('dbEmail')) $('dbEmail').value='';
+  if($('dbPhone')) $('dbPhone').value='';
+  if($('dbNote')) $('dbNote').value='';
+  if(includeSelect && $('customerSelect')) $('customerSelect').value='';
+}
+function clearCustomerForm(){
+  clearCustomerExtraFields(true);
+  if($('customerSearch')) $('customerSearch').value='';
+  customerStatus('ล้างฟอร์มฐานข้อมูลลูกค้าแล้ว');
+  renderCustomerList();
+}
+function renderCustomerList(){
+  const el=$('customerList'); if(!el)return;
+  const select=$('customerSelect');
+  const currentSelected=select?.value||'';
+  const q=($('customerSearch')?.value||'').trim().toLowerCase();
+  const list=getCustomers().map(normalizeCustomerRecord);
+  const filtered=list.filter(c=>{
+    const hay=[c.customer,c.tname,c.tdate,c.email,c.phone,c.note].join(' ').toLowerCase();
+    return !q || hay.includes(q);
+  });
+  if(select){
+    select.innerHTML='<option value="">-- เลือกลูกค้าที่บันทึกไว้ --</option>'+list.map(c=>`<option value="${c.id}">${esc((c.customer||'').split('\n')[0]||'Unnamed')} ${c.tname?' — '+esc(c.tname):''}</option>`).join('');
+    if(list.some(c=>String(c.id)===String(currentSelected))) select.value=currentSelected;
+  }
+  if(!list.length){el.innerHTML='<div class="dbItem"><span>ยังไม่มีลูกค้าที่บันทึก</span><small>ใส่ Customer Name ด้านบน แล้วกด Save / Update Customer</small></div>';return}
+  if(!filtered.length){el.innerHTML='<div class="dbItem"><span>ไม่พบลูกค้าที่ค้นหา</span></div>';return}
+  const selected=select?.value||'';
+  el.innerHTML=filtered.map(c=>`<div class="dbItem ${String(c.id)===String(selected)?'active':''}"><div onclick="previewCustomerRecord(${c.id})" style="cursor:pointer"><b>${esc((c.customer||'').split('\n')[0]||'Unnamed')}</b><br><span>${esc(c.tname||'')} ${esc(c.tdate||'')}</span><small>${esc([c.email,c.phone].filter(Boolean).join(' / '))}</small></div><div class="miniBtns"><button class="miniBtn blue" onclick="loadCustomer(${c.id})">Load</button><button class="miniBtn gold" onclick="previewCustomerRecord(${c.id}); if($('customerSelect')) $('customerSelect').value='${c.id}'">Select</button><button class="miniBtn red" onclick="deleteCustomer(${c.id})">Del</button></div></div>`).join('');
+}
+function saveInvoiceHistory(){
+  const d=collect();
+  if(!d.invoiceNo && confirm('ยังไม่มี Invoice No. ต้องการสร้างอัตโนมัติไหม?')) generateInvoiceNo();
+  const fresh=collect();
+  let list=getHistory();
+  const rec={id:Date.now(),updated:new Date().toISOString(),data:fresh,total:items.reduce((s,it)=>s+(Number(it.net||0)*effectiveNo(it)),0)};
+  list.unshift(rec);
+  setHistory(list.slice(0,200));
+  saveData();
+  alert('บันทึก Invoice History แล้ว');
+}
+function loadInvoice(id){
+  const rec=getHistory().find(x=>String(x.id)===String(id)); if(!rec)return;
+  applyData(rec.data);
+  alert('โหลด Invoice แล้ว');
+}
+function deleteInvoice(id){
+  if(!confirm('ลบ Invoice นี้จาก History?'))return;
+  setHistory(getHistory().filter(x=>String(x.id)!==String(id)));
+}
+function duplicateInvoice(id){
+  let data;
+  if(id){const rec=getHistory().find(x=>String(x.id)===String(id)); data=rec?.data;}
+  else data=collect();
+  if(!data)return;
+  applyData({...data,invoiceNo:''});
+  generateInvoiceNo();
+  alert('ทำสำเนา Invoice แล้ว');
+}
+function newInvoice(){
+  if(!confirm('เริ่ม Invoice ใหม่? ข้อมูลที่ยังไม่บันทึกอาจหาย'))return;
+  $('customer').value=''; $('tname').value=''; $('tdate').value=''; if($('pax'))$('pax').value=''; $('invoiceNo').value=''; $('issueDate').value=today();
+  items=[{date:'',detail:'',net:0,no:1,style:''}]; drawItems(); render(); renderCustomerList(); renderHistoryList();
+}
+function renderHistoryList(){
+  const el=$('historyList'); if(!el)return;
+  const q=($('historySearch')?.value||'').toLowerCase().trim();
+  const list=getHistory().filter(r=>{const d=r.data||{}; return !q || [d.invoiceNo,d.customer,d.tname,d.tdate].join(' ').toLowerCase().includes(q)});
+  if(!list.length){el.innerHTML='<div class="dbItem"><span>ยังไม่มี Invoice History ที่ตรงกับการค้นหา</span></div>';return}
+  el.innerHTML=list.map(r=>{const d=r.data||{}; const dt=new Date(r.updated).toLocaleString('th-TH'); const paymentStatus=typeof seneiPaymentSummary==='function'?seneiPaymentSummary(r).status:'Unpaid'; return `<div class="dbItem"><div><b>${esc(snapshotTitle(d))}</b><br><span>${dt} | JPY ${fmt(r.total||0)} | ${esc(paymentStatus)}</span></div><div class="miniBtns"><button class="miniBtn blue" onclick="loadInvoice(${r.id})">Open</button><button class="miniBtn gold" onclick="seneiShowPayments(${r.id})">Pay</button><button class="miniBtn gold" onclick="duplicateInvoice(${r.id})">Copy</button><button class="miniBtn red" onclick="deleteInvoice(${r.id})">Del</button></div></div>`}).join('');
+}
+function applyData(d){
+  ['customer','tname','tdate','pax','invoiceNo','issueDate','rate','notice','busNote','rateNote','jpBank','thBank','cancel','depositPct','depositDue','finalText','invoicePrefix','invoiceSeq'].forEach(k=>{if($(k) && d[k]!==undefined)$(k).value=d[k]??''});
+  if($('notice'))$('notice').value=cleanNotice($('notice').value);
+  if($('useDeposit')) $('useDeposit').checked=!!d.useDeposit;
+  if($('autoDays')) $('autoDays').checked=d.autoDays!==undefined?!!d.autoDays:true;
+  items=Array.isArray(d.items)?JSON.parse(JSON.stringify(d.items)):[];
+  setTypography(d.typography||legacyTypography(d)); drawItems(); render(); renderCustomerList(); renderHistoryList();
+}
+
+function organizeEditorSections(){
+  const info=$('grp-newinvoice'), database=$('grp-customerdb'), deposit=$('grp-deposit');
+  if(info&&database) info.insertAdjacentElement('afterend',database);
+  if(database&&deposit) database.insertAdjacentElement('afterend',deposit);
+}
+
+['customer','tname','tdate','pax','invoiceNo','rate','notice','busNote','rateNote','jpBank','thBank','cancel','depositPct','depositDue','finalText'].forEach(id=>$(id).addEventListener('input',render));
+$('issueDate')?.addEventListener('input',()=>{drawItems();render()});
+$('autoDays')?.addEventListener('change',()=>{drawItems();render()});
+$('issueDate').value=today();
+$('depositDue').value=addDays(15);
+renderTypographyControls();
+updateTypography();
+organizeEditorSections();
+drawItems(); render(); renderCustomerList(); renderHistoryList();
+window.addEventListener('resize', fitPreview);
+window.addEventListener('beforeprint',()=>{const scale=$('previewScale'); if(scale){scale.style.zoom='1';scale.style.transform='none';scale.style.height='auto';} fitDocumentToA4();});
+window.addEventListener('afterprint',()=>{fitDocumentToA4();fitPreview()});
+window.matchMedia('print').addEventListener?.('change',e=>{if(e.matches)fitDocumentToA4();else{fitDocumentToA4();fitPreview();}});
+</script>
+
+<script>
+/* ===================================================================
+   SENEI KOTSU DASHBOARD SHELL — Stage C, Revision 1
+   This script is ADDITIVE ONLY, in its own block, after the original
+   V12 script above (which is completely unmodified). All functions
+   here use the "senei" prefix to guarantee no collision with any
+   existing V12 function name, DOM id, or Local Storage key.
+
+   Rev1 changes vs the first Stage C draft:
+   - Summary cards, Recent Invoices, and System Status now read REAL
+     Local Storage data instead of hardcoded demo values.
+   - Added seneiReadStore() which distinguishes four states for any
+     key: 'missing' (key absent), 'empty' (valid JSON, zero records),
+     'valid' (valid JSON, has records), 'corrupted' (JSON.parse threw).
+     This is intentionally NOT the same as getHistory()/getCustomers()
+     above, which silently swallow parse errors — we read raw here so
+     corruption can be reported honestly instead of masked as empty.
+   - Added a real mobile hamburger menu with overlay + Escape handling.
+   - "Restore Data" quick action now calls the real triggerImport('all').
+   - V13.1 adds Payment Tracking in a separate Local Storage key while
+     preserving the approved Invoice and A4 data model.
+   - No demo customers/invoices/payments are ever written to storage;
+     all of the above is read-only against existing keys.
+   =================================================================== */
+
+// ---- Local Storage keys (must exactly match the ones already used
+// above in the unmodified V12 script — read-only references, nothing
+// here writes a new key). ----
+var SENEI_KEY_CUSTOMERS = 'senei_customer_db_v10';
+var SENEI_KEY_HISTORY   = 'senei_invoice_history_v10';
+var SENEI_KEY_CURRENT   = 'senei_invoice_v10_data';
+var SENEI_KEY_SEQ       = 'senei_invoice_seq_v10';
+var SENEI_KEY_PAYMENTS  = 'senei_payment_records_v13';
+var SENEI_KEY_RECEIPT_SEQ = 'senei_receipt_seq_v13';
+
+// ---- View switching ----
+function seneiShowDashboard(){
+  document.getElementById('dashboardView').style.display = '';
+  document.getElementById('invoiceView').style.display = 'none';
+  document.getElementById('paymentView').style.display = 'none';
+  document.getElementById('reportsView').style.display = 'none';
+  document.getElementById('nav-dashboard').classList.add('active');
+  document.getElementById('nav-payments')?.classList.remove('activePayment');
+  document.getElementById('nav-reports')?.classList.remove('activeReports');
+  seneiCloseMobileSidebar();
+  seneiRefreshSummaryCards();
+  seneiRenderRecentInvoices();
+  seneiRefreshSystemStatus();
+}
+
+function seneiShowInvoice(anchorId){
+  document.getElementById('dashboardView').style.display = 'none';
+  document.getElementById('invoiceView').style.display = '';
+  document.getElementById('paymentView').style.display = 'none';
+  document.getElementById('reportsView').style.display = 'none';
+  document.getElementById('nav-dashboard').classList.remove('active');
+  document.getElementById('nav-payments')?.classList.remove('activePayment');
+  document.getElementById('nav-reports')?.classList.remove('activeReports');
+  seneiCloseMobileSidebar();
+  // The preview panel was hidden (display:none) so its last width/scale
+  // calculation may be stale. Re-run the existing V12 fitPreview() now
+  // that it's visible again, without altering fitPreview() itself.
+  if(typeof fitPreview === 'function'){
+    requestAnimationFrame(fitPreview);
+  }
+  if(anchorId){
+    setTimeout(function(){
+      var el = document.getElementById(anchorId);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 30);
+  }
+}
+
+function seneiShowPayments(invoiceId){
+  document.getElementById('dashboardView').style.display='none';
+  document.getElementById('invoiceView').style.display='none';
+  document.getElementById('paymentView').style.display='';
+  document.getElementById('reportsView').style.display='none';
+  document.getElementById('nav-dashboard').classList.remove('active');
+  document.getElementById('nav-payments')?.classList.add('activePayment');
+  document.getElementById('nav-reports')?.classList.remove('activeReports');
+  seneiCloseMobileSidebar();
+  seneiRefreshPaymentModule(invoiceId);
+}
+
+function seneiShowReports(){
+  document.getElementById('dashboardView').style.display='none';
+  document.getElementById('invoiceView').style.display='none';
+  document.getElementById('paymentView').style.display='none';
+  document.getElementById('reportsView').style.display='';
+  document.getElementById('nav-dashboard').classList.remove('active');
+  document.getElementById('nav-payments')?.classList.remove('activePayment');
+  document.getElementById('nav-reports')?.classList.add('activeReports');
+  seneiCloseMobileSidebar();
+  seneiRenderReports();
+}
+
+function seneiScrollEditorBottom(){
+  const panel=document.querySelector('#invoiceView .panel');
+  if(!panel)return;
+  if(panel.scrollHeight>panel.clientHeight && typeof panel.scrollTo==='function'){
+    panel.scrollTo({top:panel.scrollHeight,behavior:'smooth'});
+  }else{
+    window.scrollTo({top:document.documentElement.scrollHeight,behavior:'smooth'});
+  }
+}
+
+// Opens a genuinely new Invoice and prepares exactly four Item rows per
+// the Dashboard "Create Invoice" / "Create New Invoice" requirement.
+//
+// Rev3: this function no longer calls the protected V12 newInvoice().
+// The previous approach (call newInvoice(), then infer success from the
+// resulting shape of `items`) was unreliable: if the Invoice already
+// happened to have exactly one blank row before the click, that shape
+// matched newInvoice()'s post-confirm state even when the user pressed
+// Cancel, so Cancel was silently ignored. Showing the confirm() dialog
+// here directly removes that ambiguity — we know for certain whether the
+// user confirmed, because this function's own return value on Cancel is
+// unambiguous, no inference required.
+//
+// This performs the same field-clearing steps as V12's newInvoice() and
+// calls the same existing rendering functions; newInvoice() itself is
+// untouched and unused here. Nothing is written to Local Storage until
+// the user explicitly uses an existing Save action.
+function seneiCreateNewInvoice(){
+  if(!confirm('เริ่ม Invoice ใหม่? ข้อมูลที่ยังไม่บันทึกอาจหาย')) return;
+
+  // Same field-clearing behavior as the protected V12 newInvoice().
+  if(document.getElementById('customer'))   document.getElementById('customer').value = '';
+  if(document.getElementById('tname'))      document.getElementById('tname').value = '';
+  if(document.getElementById('tdate'))      document.getElementById('tdate').value = '';
+  if(document.getElementById('pax'))        document.getElementById('pax').value = '';
+  if(document.getElementById('invoiceNo'))  document.getElementById('invoiceNo').value = '';
+  if(document.getElementById('issueDate'))  document.getElementById('issueDate').value = today();
+
+  // Set Items directly to exactly the four required rows.
+  items = [
+    {date:'', detail:'', net:0, no:1, style:''},
+    {date:'', detail:'', net:0, no:1, style:''},
+    {date:'', detail:'', net:0, no:1, style:''},
+    {date:'', detail:'All inc. driver / gassoline / highway / parking / kaiso / meal / hotel / ochadai dv.', net:0, no:1, style:''}
+  ];
+
+  // Same existing, unmodified V12 rendering functions newInvoice() uses.
+  drawItems();
+  render();
+  renderCustomerList();
+  renderHistoryList();
+
+  seneiShowInvoice('grp-newinvoice');
+}
+
+
+function seneiViewInvoiceFromHistory(id){
+  if(typeof loadInvoice === 'function'){
+    loadInvoice(id);
+  }
+  seneiShowInvoice(null);
+}
+
+// ---- Mobile hamburger menu (task 5) ----
+function seneiToggleSidebar(){
+  var sb = document.getElementById('shellSidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  var btn = document.getElementById('hamburgerBtn');
+  if(!sb) return;
+  var willOpen = !sb.classList.contains('open');
+  sb.classList.toggle('open', willOpen);
+  if(overlay) overlay.classList.toggle('show', willOpen);
+  if(btn) btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+}
+
+function seneiCloseMobileSidebar(){
+  var sb = document.getElementById('shellSidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  var btn = document.getElementById('hamburgerBtn');
+  if(sb) sb.classList.remove('open');
+  if(overlay) overlay.classList.remove('show');
+  if(btn) btn.setAttribute('aria-expanded', 'false');
+}
+
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape' || e.key === 'Esc'){
+    seneiCloseMobileSidebar();
+  }
+});
+
+// ---- Real backup / restore actions (task 4) ----
+// "Backup Data" calls the REAL existing V12 export-all function.
+function seneiBackupAll(){
+  if(typeof exportAllData === 'function'){
+    exportAllData();
+  }else{
+    alert('Backup function not available.');
+  }
+}
+
+// "Restore Data" calls the REAL existing V12 import function. It opens
+// the Invoice view first (triggerImport relies on the hidden file input
+// that lives inside the unmodified .app markup) then triggers it.
+function seneiRestoreAll(){
+  seneiShowInvoice(null);
+  setTimeout(function(){
+    if(typeof triggerImport === 'function'){
+      triggerImport('all');
+    }else{
+      alert('Restore function not available.');
+    }
+  }, 30);
+}
+
+// Settings / Logout / Reports remain future modules.
+function seneiSetting(){
+  alert('This section is a placeholder for a future module and is not implemented yet.');
+}
+
+// ---- V13.1 Record Payment module ----
+function seneiGetPayments(){
+  try{
+    var parsed=JSON.parse(localStorage.getItem(SENEI_KEY_PAYMENTS)||'[]');
+    return Array.isArray(parsed)?parsed:[];
+  }catch(e){return []}
+}
+function seneiEscAttr(v){return String(v??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function seneiSetPayments(list){
+  localStorage.setItem(SENEI_KEY_PAYMENTS,JSON.stringify(Array.isArray(list)?list:[]));
+  seneiRefreshPaymentModule();
+}
+function seneiPaymentHistoryRecord(id){
+  return getHistory().find(function(r){return String(r.id)===String(id)})||null;
+}
+function seneiPaymentsForInvoice(id){
+  return seneiGetPayments().filter(function(p){return String(p.invoiceHistoryId)===String(id)})
+}
+function seneiPaymentSummary(rec){
+  if(!rec)return {total:0,rate:0,jpy:0,thb:0,equivalent:0,remaining:0,overpaid:0,status:'Unpaid',css:''};
+  var d=rec.data||{},total=Number(rec.total||0),rate=Number(d.rate||0),jpy=0,thb=0,hasUnconvertedThb=false;
+  seneiPaymentsForInvoice(rec.id).forEach(function(p){
+    var amount=Math.max(0,Number(p.amount||0));
+    if(p.currency==='THB'){thb+=amount;if(!rate)hasUnconvertedThb=true}else{jpy+=amount}
+  });
+  var equivalent=jpy+(rate?thb/rate:0),remaining=Math.max(0,total-equivalent),overpaid=Math.max(0,equivalent-total),status='Unpaid',css='';
+  if(equivalent>0 || thb>0){
+    if(hasUnconvertedThb){status='Partially Paid';css='partial'}
+    else if(equivalent>total+1){status='Overpaid';css='overpaid'}
+    else if(total>0 && equivalent>=total-1){status='Paid';css='paid'}
+    else if(d.useDeposit && equivalent>=total*Math.max(0,Math.min(100,Number(d.depositPct||0)))/100-1){status='Deposit Paid';css='partial'}
+    else {status='Partially Paid';css='partial'}
+  }
+  return {total:total,rate:rate,jpy:jpy,thb:thb,equivalent:equivalent,remaining:remaining,overpaid:overpaid,status:status,css:css,hasUnconvertedThb:hasUnconvertedThb};
+}
+function seneiPaymentStatusHtml(rec){
+  var s=seneiPaymentSummary(rec);return '<span class="statusBadge '+s.css+'">'+esc(s.status)+'</span>';
+}
+function seneiPopulatePaymentInvoices(selectedId){
+  var select=$('paymentInvoice');if(!select)return;
+  var current=selectedId!==undefined&&selectedId!==null?String(selectedId):select.value;
+  var history=getHistory();
+  select.innerHTML='<option value="">-- เลือก Invoice จาก History --</option>'+history.map(function(r){var d=r.data||{};return '<option value="'+seneiEscAttr(r.id)+'">'+esc(d.invoiceNo||'(No Invoice No.)')+' — '+esc((d.customer||d.tname||'Untitled').split('\n')[0])+'</option>'}).join('');
+  if(history.some(function(r){return String(r.id)===current}))select.value=current;
+}
+function seneiSuggestedPaymentAmount(rec,currency,type){
+  if(!rec)return 0;
+  var d=rec.data||{},s=seneiPaymentSummary(rec),suggestedJpy=s.remaining;
+  if(type==='Deposit' && d.useDeposit){
+    var depositTarget=s.total*Math.max(0,Math.min(100,Number(d.depositPct||0)))/100;
+    suggestedJpy=Math.max(0,depositTarget-s.equivalent);
+  }
+  if(currency==='THB')return s.rate?suggestedJpy*s.rate:0;
+  return suggestedJpy;
+}
+function seneiRefreshPaymentInvoice(prefillAmount){
+  var rec=seneiPaymentHistoryRecord($('paymentInvoice')?.value),box=$('paymentInvoiceBalance'),badge=$('paymentStatusBadge');
+  if(!rec){if(box)box.innerHTML='<div class="balanceItem"><small>Invoice Total</small><b>JPY 0</b></div><div class="balanceItem"><small>Remaining</small><b>JPY 0</b></div>';if(badge){badge.textContent='Select Invoice';badge.className='statusBadge'};return}
+  var s=seneiPaymentSummary(rec),d=rec.data||{};
+  if(box)box.innerHTML='<div class="balanceItem"><small>Invoice Total</small><b>JPY '+fmt(s.total)+'</b></div><div class="balanceItem"><small>Remaining</small><b>JPY '+fmt(s.remaining)+'</b></div><div class="balanceItem"><small>Received JPY</small><b>JPY '+fmt(s.jpy)+'</b></div><div class="balanceItem"><small>Received THB</small><b>THB '+fmt(s.thb)+'</b></div>'+(s.overpaid>0?'<div class="balanceItem"><small>Overpaid</small><b class="paymentDanger">JPY '+fmt(s.overpaid)+'</b></div>':'');
+  if(badge){badge.textContent=s.status;badge.className='statusBadge '+s.css}
+  var amount=$('paymentAmount'),currency=$('paymentCurrency')?.value||'JPY',type=$('paymentType')?.value||'Deposit';
+  if(amount){var suggested=seneiSuggestedPaymentAmount(rec,currency,type);amount.placeholder=fmt(suggested);if(prefillAmount)amount.value=String(Math.round(suggested))}
+}
+function seneiClearPaymentForm(){
+  if($('paymentDate'))$('paymentDate').value=today();if($('paymentType'))$('paymentType').value='Deposit';if($('paymentCurrency'))$('paymentCurrency').value='JPY';if($('paymentAmount'))$('paymentAmount').value='';if($('paymentMethod'))$('paymentMethod').value='Bank Transfer';if($('paymentReference'))$('paymentReference').value='';if($('paymentNote'))$('paymentNote').value='';seneiRefreshPaymentInvoice();
+}
+function seneiRecordPayment(){
+  var rec=seneiPaymentHistoryRecord($('paymentInvoice')?.value);if(!rec){alert('กรุณาเลือก Invoice จาก History');return}
+  var date=$('paymentDate')?.value||'',currency=$('paymentCurrency')?.value||'',amount=Number($('paymentAmount')?.value||0);
+  if(!date){alert('กรุณาเลือก Payment Date');return}if(!['JPY','THB'].includes(currency)){alert('Currency ไม่ถูกต้อง');return}if(!(amount>0)){alert('Amount ต้องมากกว่า 0');return}
+  var d=rec.data||{},list=seneiGetPayments();
+  list.unshift({id:Date.now(),invoiceHistoryId:rec.id,invoiceNo:d.invoiceNo||'',customer:(d.customer||d.tname||'').split('\n')[0],paymentDate:date,type:$('paymentType')?.value||'Partial',currency:currency,amount:amount,method:$('paymentMethod')?.value||'Other',reference:$('paymentReference')?.value||'',note:$('paymentNote')?.value||'',receiptNo:'',created:new Date().toISOString(),updated:new Date().toISOString()});
+  seneiSetPayments(list.slice(0,2000));seneiClearPaymentForm();alert('บันทึก Payment แล้ว');
+}
+function seneiDeletePayment(id){
+  if(!confirm('ลบ Payment รายการนี้?'))return;seneiSetPayments(seneiGetPayments().filter(function(p){return String(p.id)!==String(id)}));
+}
+function seneiExportPayments(){downloadJSON('senei-payments-'+stamp()+'.json',{type:'senei-payments-v13.1',payments:seneiGetPayments()})}
+function seneiNextReceiptNo(paymentDate){
+  var seq=Math.max(1,parseInt(localStorage.getItem(SENEI_KEY_RECEIPT_SEQ)||'1',10)||1);
+  var year=String(paymentDate||today()).slice(0,4)||String(new Date().getFullYear());
+  localStorage.setItem(SENEI_KEY_RECEIPT_SEQ,String(seq+1));
+  return 'RC-'+year+'-'+String(seq).padStart(4,'0');
+}
+function seneiEnsureReceiptNo(id){
+  var list=seneiGetPayments(),payment=list.find(function(p){return String(p.id)===String(id)});if(!payment)return null;
+  if(!payment.receiptNo){payment.receiptNo=seneiNextReceiptNo(payment.paymentDate);payment.updated=new Date().toISOString();localStorage.setItem(SENEI_KEY_PAYMENTS,JSON.stringify(list));seneiRenderPaymentLedger()}
+  return payment;
+}
+function seneiPrintReceipt(id){
+  var payment=seneiEnsureReceiptNo(id);if(!payment){alert('ไม่พบ Payment รายการนี้');return}
+  var rec=seneiPaymentHistoryRecord(payment.invoiceHistoryId);if(!rec){alert('ไม่พบ Invoice ต้นทางของ Payment รายการนี้');return}
+  var d=rec.data||{},payload={payment:payment,invoice:{invoiceNo:d.invoiceNo||payment.invoiceNo||'',customer:d.customer||payment.customer||'',tname:d.tname||'',tdate:d.tdate||'',pax:d.pax||'',issueDate:d.issueDate||'',rate:Number(d.rate||0)},logo:LOGO};
+  try{sessionStorage.setItem('senei_receipt_payload_v1',JSON.stringify(payload))}catch(e){}
+  var renderer=window.open('senei_kotsu_receipt_renderer_v1.html','_blank');if(!renderer){alert('เบราว์เซอร์บล็อกหน้าต่าง Receipt Renderer กรุณาอนุญาต Pop-up แล้วลองใหม่');return}
+  var send=function(){try{renderer.postMessage({type:'senei-render-receipt',payload:payload},'*')}catch(e){}};
+  var ready=function(e){if(e.source===renderer&&e.data&&e.data.type==='senei-receipt-renderer-ready'){send();window.removeEventListener('message',ready)}};
+  window.addEventListener('message',ready);setTimeout(send,500);setTimeout(send,1400);
+}
+function seneiRenderPaymentLedger(){
+  var body=$('paymentLedgerBody'),count=$('paymentLedgerCount');if(!body)return;
+  var q=($('paymentSearch')?.value||'').trim().toLowerCase();
+  var list=seneiGetPayments().filter(function(p){return !q||[p.invoiceNo,p.customer,p.reference,p.note,p.type,p.method,p.receiptNo].join(' ').toLowerCase().includes(q)});
+  if(count)count.textContent=list.length+' record'+(list.length===1?'':'s');
+  if(!list.length){body.innerHTML='<tr><td colspan="7" class="paymentEmpty">ยังไม่มี Payment ที่ตรงกับการค้นหา</td></tr>';return}
+  body.innerHTML=list.map(function(p){return '<tr><td>'+esc(p.paymentDate||'—')+'</td><td><div class="paymentInvoiceTitle">'+esc(p.invoiceNo||'—')+'</div><div class="paymentInvoiceSub">'+esc(p.customer||'—')+'</div></td><td>'+esc(p.type||'—')+'</td><td>'+esc(p.method||'—')+'<div class="paymentInvoiceSub">'+esc(p.reference||'')+'</div></td><td>'+esc(p.currency||'JPY')+'</td><td class="amount">'+fmt(p.amount)+'</td><td><div class="paymentInvoiceSub">'+esc(p.receiptNo||'Not issued')+'</div><div class="receiptActions"><button class="miniBtn receipt" data-payment-id="'+seneiEscAttr(p.id)+'" onclick="seneiPrintReceipt(this.dataset.paymentId)">Receipt</button><button class="miniBtn red" data-payment-id="'+seneiEscAttr(p.id)+'" onclick="seneiDeletePayment(this.dataset.paymentId)">Del</button></div></td></tr>'}).join('');
+}
+function seneiPaymentMetrics(){
+  var history=getHistory(),payments=seneiGetPayments(),jpy=0,thb=0,outstanding=0,paid=0;
+  payments.forEach(function(p){if(p.currency==='THB')thb+=Number(p.amount||0);else jpy+=Number(p.amount||0)});
+  history.forEach(function(rec){var s=seneiPaymentSummary(rec);outstanding+=s.remaining;if(s.status==='Paid'||s.status==='Overpaid')paid++});
+  return {jpy:jpy,thb:thb,outstanding:outstanding,paid:paid,invoices:history.length,payments:payments.length};
+}
+function seneiRefreshPaymentModule(selectedId){
+  seneiPopulatePaymentInvoices(selectedId);if($('paymentDate')&&!$('paymentDate').value)$('paymentDate').value=today();seneiRefreshPaymentInvoice(selectedId!==undefined&&selectedId!==null&&selectedId!=='');seneiRenderPaymentLedger();
+  var m=seneiPaymentMetrics();if($('payMetricOutstanding'))$('payMetricOutstanding').textContent='JPY '+fmt(m.outstanding);if($('payMetricJpy'))$('payMetricJpy').textContent='JPY '+fmt(m.jpy);if($('payMetricThb'))$('payMetricThb').textContent='THB '+fmt(m.thb);if($('payMetricPaid'))$('payMetricPaid').textContent=String(m.paid);
+}
+
+// ---- V13.3 Reports: read-only calculations over Invoice History + Payments ----
+function seneiReportPaymentInRange(payment){
+  var date=String(payment.paymentDate||''),from=$('reportFrom')?.value||'',to=$('reportTo')?.value||'';
+  return (!from||date>=from)&&(!to||date<=to);
+}
+function seneiReportInvoiceRows(){
+  var statusFilter=$('reportStatus')?.value||'',q=($('reportSearch')?.value||'').trim().toLowerCase();
+  return getHistory().map(function(rec){
+    var d=rec.data||{},summary=seneiPaymentSummary(rec),text=[d.invoiceNo,d.customer,d.tname,d.tdate].join(' ').toLowerCase();
+    return {rec:rec,data:d,summary:summary};
+  }).filter(function(row){return (!statusFilter||row.summary.status===statusFilter)&&(!q||[row.data.invoiceNo,row.data.customer,row.data.tname,row.data.tdate].join(' ').toLowerCase().includes(q))});
+}
+function seneiReportStatusClass(status){return status==='Paid'?'reportOk':(status==='Unpaid'?'reportWarn':'')}
+function seneiRenderReports(){
+  if(!$('reportInvoiceBody'))return;
+  var rows=seneiReportInvoiceRows(),payments=seneiGetPayments().filter(seneiReportPaymentInRange),total=0,outstanding=0,jpy=0,thb=0;
+  rows.forEach(function(row){total+=Number(row.summary.total||0);outstanding+=Number(row.summary.remaining||0)});
+  payments.forEach(function(p){if(p.currency==='THB')thb+=Number(p.amount||0);else jpy+=Number(p.amount||0)});
+  $('reportInvoiced').textContent='JPY '+fmt(total);$('reportOutstanding').textContent='JPY '+fmt(outstanding);$('reportReceivedJpy').textContent='JPY '+fmt(jpy);$('reportReceivedThb').textContent='THB '+fmt(thb);$('reportInvoiceCount').textContent=rows.length+' invoice'+(rows.length===1?'':'s');
+  $('reportInvoiceBody').innerHTML=rows.length?rows.map(function(row){
+    var d=row.data,s=row.summary,pct=s.total>0?Math.min(100,Math.max(0,s.equivalent/s.total*100)):0;
+    return '<tr><td><b>'+esc(d.invoiceNo||'—')+'</b><div class="paymentInvoiceSub">'+esc(d.issueDate||'')+'</div></td><td>'+esc((d.customer||'—').split('\n')[0])+'<div class="paymentInvoiceSub">'+esc(d.tname||'')+'</div></td><td class="amount">'+fmt(s.total)+'</td><td class="amount">'+fmt(s.equivalent)+'</td><td class="amount">'+fmt(s.remaining)+'</td><td class="reportStatus"><b class="'+seneiReportStatusClass(s.status)+'">'+esc(s.status)+'</b><div class="reportBar"><span style="width:'+pct.toFixed(1)+'%"></span></div></td></tr>';
+  }).join(''):'<tr><td colspan="6" class="reportEmpty">ไม่พบ Invoice ที่ตรงกับตัวกรอง</td></tr>';
+  var order=['Unpaid','Deposit Paid','Partially Paid','Paid','Overpaid'],byStatus={};order.forEach(function(k){byStatus[k]={count:0,outstanding:0}});rows.forEach(function(row){var k=row.summary.status;if(!byStatus[k])byStatus[k]={count:0,outstanding:0};byStatus[k].count++;byStatus[k].outstanding+=Number(row.summary.remaining||0)});
+  $('reportStatusBody').innerHTML=order.map(function(k){var v=byStatus[k];return '<tr><td class="'+seneiReportStatusClass(k)+'">'+k+'</td><td class="amount">'+v.count+'</td><td class="amount">'+fmt(v.outstanding)+'</td></tr>'}).join('');
+  var months={};payments.forEach(function(p){var month=String(p.paymentDate||'').slice(0,7)||'Unknown';if(!months[month])months[month]={count:0,jpy:0,thb:0};months[month].count++;if(p.currency==='THB')months[month].thb+=Number(p.amount||0);else months[month].jpy+=Number(p.amount||0)});
+  var monthKeys=Object.keys(months).sort().reverse();$('reportMonthlyBody').innerHTML=monthKeys.length?monthKeys.map(function(k){var v=months[k];return '<tr><td>'+esc(k)+'</td><td class="amount">'+v.count+'</td><td class="amount">'+fmt(v.jpy)+'</td><td class="amount">'+fmt(v.thb)+'</td></tr>'}).join(''):'<tr><td colspan="4" class="reportEmpty">ยังไม่มี Payment ในช่วงเวลาที่เลือก</td></tr>';
+  seneiRenderAging(rows);
+}
+function seneiSetReportThisMonth(){var d=new Date(),y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),last=new Date(y,d.getMonth()+1,0).getDate();$('reportFrom').value=y+'-'+m+'-01';$('reportTo').value=y+'-'+m+'-'+String(last).padStart(2,'0');seneiRenderReports()}
+function seneiClearReportFilters(){$('reportFrom').value='';$('reportTo').value='';$('reportStatus').value='';$('reportSearch').value='';seneiRenderReports()}
+function seneiCsvCell(v){return '"'+String(v??'').replace(/"/g,'""')+'"'}
+function seneiExportReportCSV(){
+  var rows=seneiReportInvoiceRows(),lines=[['Invoice No.','Customer','Tour Name','Issue Date','Total JPY','Received JPY Equivalent','Outstanding JPY','Status']];
+  rows.forEach(function(row){var d=row.data,s=row.summary;lines.push([d.invoiceNo||'',(d.customer||'').replace(/\n/g,' '),d.tname||'',d.issueDate||'',s.total,s.equivalent,s.remaining,s.status])});
+  var csv='\uFEFF'+lines.map(function(line){return line.map(seneiCsvCell).join(',')}).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='senei-report-'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},500);
+}
+
+// ---- V13.4 Outstanding Aging: read-only, due dates are never inferred ----
+function seneiAgingDate(value){var v=String(value||'');if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;var parts=v.split('-').map(Number),d=new Date(Date.UTC(parts[0],parts[1]-1,parts[2]));return isNaN(d.getTime())?null:d}
+function seneiAgingBucket(due,asOf){
+  if(!due)return {key:'noDue',label:'No Due Date',days:null,rank:1};
+  var days=Math.floor((asOf-due)/86400000);
+  if(days<0)return {key:'notDue',label:'Not Due',days:days,rank:0};
+  if(days<=30)return {key:'d0_30',label:'0–30 Days',days:days,rank:2};
+  if(days<=60)return {key:'d31_60',label:'31–60 Days',days:days,rank:3};
+  if(days<=90)return {key:'d61_90',label:'61–90 Days',days:days,rank:4};
+  return {key:'d90plus',label:'90+ Days',days:days,rank:5};
+}
+function seneiAgingRows(reportRows){
+  var asOfInput=$('agingAsOf');if(asOfInput&&!asOfInput.value)asOfInput.value=today();var asOf=seneiAgingDate(asOfInput?.value)||seneiAgingDate(today());
+  return reportRows.filter(function(row){return Number(row.summary.remaining||0)>0}).map(function(row){
+    var d=row.data,due=d.useDeposit?seneiAgingDate(d.depositDue):null,bucket=seneiAgingBucket(due,asOf),customer=((d.customer||d.tname||'Unknown Customer').split('\n')[0]||'Unknown Customer').trim();
+    return {row:row,due:due,dueText:due?String(d.depositDue):'—',dueSource:due?'Deposit Due':'No Due Date',bucket:bucket,customer:customer,outstanding:Number(row.summary.remaining||0)};
+  }).sort(function(a,b){return b.bucket.rank-a.bucket.rank||(b.bucket.days||0)-(a.bucket.days||0)||b.outstanding-a.outstanding});
+}
+function seneiRenderAging(reportRows){
+  if(!$('agingInvoiceBody'))return;var rows=seneiAgingRows(reportRows),keys=['notDue','d0_30','d31_60','d61_90','d90plus','noDue'],labels={'notDue':'NOT DUE','d0_30':'0–30 DAYS','d31_60':'31–60 DAYS','d61_90':'61–90 DAYS','d90plus':'90+ DAYS','noDue':'NO DUE DATE'},totals={};keys.forEach(function(k){totals[k]={count:0,amount:0}});rows.forEach(function(r){totals[r.bucket.key].count++;totals[r.bucket.key].amount+=r.outstanding});
+  $('agingMetrics').innerHTML=keys.map(function(k){var v=totals[k],cls=(k==='d31_60'||k==='d61_90'||k==='d90plus')?' overdue':(k==='noDue'?' noDue':'');return '<div class="agingMetric'+cls+'"><small>'+labels[k]+' · '+v.count+'</small><strong>JPY '+fmt(v.amount)+'</strong></div>'}).join('');
+  $('agingInvoiceBody').innerHTML=rows.length?rows.map(function(r){var d=r.row.data,age=r.bucket.days===null?'—':(r.bucket.days<0?Math.abs(r.bucket.days)+' days until due':r.bucket.days+' days overdue'),cls=r.bucket.days!==null&&r.bucket.days>=0?'agingLate':(r.bucket.days!==null?'agingFuture':'');return '<tr><td><b>'+esc(d.invoiceNo||'—')+'</b></td><td>'+esc(r.customer)+'<div class="paymentInvoiceSub">'+esc(d.tname||'')+'</div></td><td class="agingDue">'+esc(r.dueSource)+'<div class="paymentInvoiceSub">'+esc(r.dueText)+'</div></td><td class="'+cls+'">'+esc(age)+'</td><td class="amount">'+fmt(r.outstanding)+'</td><td>'+esc(r.bucket.label)+'</td></tr>'}).join(''):'<tr><td colspan="6" class="reportEmpty">ไม่มี Invoice ค้างชำระที่ตรงกับตัวกรอง</td></tr>';
+  var customers={};rows.forEach(function(r){var c=customers[r.customer]||(customers[r.customer]={name:r.customer,count:0,amount:0,oldest:null,rank:0,label:'No Due Date'});c.count++;c.amount+=r.outstanding;if(r.due&&(!c.oldest||r.due<c.oldest))c.oldest=r.due;if(r.bucket.rank>c.rank){c.rank=r.bucket.rank;c.label=r.bucket.label}});var list=Object.values(customers).sort(function(a,b){return b.amount-a.amount});$('agingCustomerCount').textContent=list.length+' customer'+(list.length===1?'':'s');$('agingCustomerBody').innerHTML=list.length?list.map(function(c){return '<tr><td><b>'+esc(c.name)+'</b></td><td class="amount">'+c.count+'</td><td class="amount">'+fmt(c.amount)+'</td><td>'+esc(c.oldest?c.oldest.toISOString().slice(0,10):'—')+'</td><td class="'+(c.rank>=3?'agingLate':'')+'">'+esc(c.label)+'</td></tr>'}).join(''):'<tr><td colspan="5" class="reportEmpty">ไม่มีลูกค้าที่มียอดค้าง</td></tr>';
+}
+function seneiExportAgingCSV(){
+  var rows=seneiAgingRows(seneiReportInvoiceRows()),lines=[['Invoice No.','Customer','Tour Name','Due Date Source','Due Date','Age Bucket','Days Overdue','Outstanding JPY']];rows.forEach(function(r){var d=r.row.data;lines.push([d.invoiceNo||'',r.customer,d.tname||'',r.dueSource,r.dueText,r.bucket.label,r.bucket.days===null?'':r.bucket.days,r.outstanding])});var csv='\uFEFF'+lines.map(function(line){return line.map(seneiCsvCell).join(',')}).join('\r\n'),blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='senei-aging-'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},500);
+}
+
+// ---- Shared Local Storage reader that distinguishes real states
+// instead of collapsing everything into a single "OK" (task 8). ----
+// Returns: { state: 'missing'|'empty'|'valid'|'corrupted', value, count }
+function seneiReadStore(key, expectArray){
+  var raw;
+  try{
+    raw = localStorage.getItem(key);
+  }catch(e){
+    // localStorage itself unavailable (e.g. privacy mode) — treat as unavailable
+    return {state:'corrupted', value:null, count:0, detail:'Local Storage is unavailable in this browser context.'};
+  }
+  if(raw === null || raw === undefined){
+    return {state:'missing', value:null, count:0};
+  }
+  var parsed;
+  try{
+    parsed = JSON.parse(raw);
+  }catch(e){
+    return {state:'corrupted', value:null, count:0, detail:'Stored value is not valid JSON.'};
+  }
+  if(expectArray){
+    if(!Array.isArray(parsed)){
+      return {state:'corrupted', value:null, count:0, detail:'Expected a list but stored value has a different shape.'};
+    }
+    if(parsed.length === 0){
+      return {state:'empty', value:parsed, count:0};
+    }
+    return {state:'valid', value:parsed, count:parsed.length};
+  }
+  return {state:'valid', value:parsed, count:1};
+}
+
+// ---- Summary cards — real Invoice, Customer and V13.1 Payment data. ----
+function seneiRefreshSummaryCards(){
+  var historyResult = seneiReadStore(SENEI_KEY_HISTORY, true);
+  var customerResult = seneiReadStore(SENEI_KEY_CUSTOMERS, true);
+
+  function setCard(valId, subId, text, subText){
+    var v = document.getElementById(valId), s = document.getElementById(subId);
+    if(v) v.textContent = text;
+    if(s) s.textContent = subText;
+  }
+
+  // Total Invoices
+  if(historyResult.state === 'valid'){
+    setCard('statTotalInvoices','statTotalInvoicesSub', String(historyResult.count), historyResult.count + ' record(s) in history');
+  }else if(historyResult.state === 'empty'){
+    setCard('statTotalInvoices','statTotalInvoicesSub', '0', 'No invoices saved yet');
+  }else if(historyResult.state === 'missing'){
+    setCard('statTotalInvoices','statTotalInvoicesSub', '0', 'No data');
+  }else{
+    setCard('statTotalInvoices','statTotalInvoicesSub', '—', 'Data error: ' + (historyResult.detail||'unreadable'));
+  }
+
+  // Total Customers
+  if(customerResult.state === 'valid'){
+    setCard('statTotalCustomers','statTotalCustomersSub', String(customerResult.count), customerResult.count + ' record(s) saved');
+  }else if(customerResult.state === 'empty'){
+    setCard('statTotalCustomers','statTotalCustomersSub', '0', 'No customers saved yet');
+  }else if(customerResult.state === 'missing'){
+    setCard('statTotalCustomers','statTotalCustomersSub', '0', 'No data');
+  }else{
+    setCard('statTotalCustomers','statTotalCustomersSub', '—', 'Data error: ' + (customerResult.detail||'unreadable'));
+  }
+
+  var metrics=seneiPaymentMetrics();
+  setCard('statOutstanding','statOutstandingSub','JPY '+fmt(metrics.outstanding),metrics.payments+' payment record(s)');
+  var month=today().slice(0,7),monthPayments=seneiGetPayments().filter(function(p){return String(p.paymentDate||'').slice(0,7)===month}),monthJpy=0,monthThb=0;
+  monthPayments.forEach(function(p){if(p.currency==='THB')monthThb+=Number(p.amount||0);else monthJpy+=Number(p.amount||0)});
+  setCard('statPaidMonth','statPaidMonthSub','JPY '+fmt(monthJpy),'THB '+fmt(monthThb)+' received this month');
+  var overview=document.getElementById('dashboardPaymentOverview');
+  if(overview)overview.innerHTML='<div class="statusRow"><span>Payment records</span><b>'+metrics.payments+'</b></div><div class="statusRow"><span>Paid invoices</span><b>'+metrics.paid+' / '+metrics.invoices+'</b></div><div class="statusRow"><span>Received</span><b>JPY '+fmt(metrics.jpy)+'</b></div><div class="statusRow"><span>Thai Baht</span><b>THB '+fmt(metrics.thb)+'</b></div><button class="btn blue" style="margin-top:8px" onclick="seneiShowPayments()">Open Payment Tracking</button>';
+}
+
+// ---- Recent Invoices table (task 2) — real records from history ----
+function seneiRenderRecentInvoices(){
+  var tbody = document.getElementById('recentInvoicesBody');
+  var tag = document.getElementById('recentInvoicesTag');
+  if(!tbody) return;
+
+  var result = seneiReadStore(SENEI_KEY_HISTORY, true);
+
+  if(result.state === 'corrupted'){
+    if(tag){ tag.textContent = 'DATA ERROR'; tag.style.background = '#fee2e2'; tag.style.color = 'var(--bad)'; }
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--bad);padding:18px">Invoice History could not be read (invalid data). Existing data has not been modified — please check your backups.</td></tr>';
+    return;
+  }
+
+  if(tag){ tag.textContent = 'LIVE DATA'; tag.style.background = '#dcfce7'; tag.style.color = 'var(--ok)'; }
+
+  if(result.state === 'missing' || result.state === 'empty'){
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--dash-muted);padding:18px">No invoices yet. Use "Create New Invoice" to add your first record.</td></tr>';
+    return;
+  }
+
+  var records = result.value.slice(0, 5); // most recent first (history list is unshifted on save)
+  function escText(v){
+    var d = document.createElement('div');
+    d.textContent = (v === undefined || v === null) ? '' : String(v);
+    return d.innerHTML;
+  }
+  // Attribute-safe escaping (also encodes quotes) so an invoice id
+  // containing special characters — e.g. an imported string id — cannot
+  // break out of the data-invoice-id="..." attribute it's placed in.
+  function escAttr(v){
+    return String(v === undefined || v === null ? '' : v)
+      .replace(/&/g,'&amp;')
+      .replace(/"/g,'&quot;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;');
+  }
+  tbody.innerHTML = records.map(function(rec){
+    var d = rec.data || {};
+    var amount = (typeof rec.total === 'number') ? rec.total.toLocaleString('en-US') : '—';
+    return '<tr>' +
+      '<td>' + escText(d.invoiceNo || '—') + '</td>' +
+      '<td>' + escText(d.customer || '—') + '</td>' +
+      '<td>' + escText(d.tname || '—') + '</td>' +
+      '<td>' + escText(d.issueDate || '—') + '</td>' +
+      '<td>' + escText(amount) + '</td>' +
+      '<td>' + seneiPaymentStatusHtml(rec) + '</td>' +
+      '<td class="rowActions"><a data-invoice-id="' + escAttr(rec.id) + '" onclick="seneiViewInvoiceFromHistory(this.dataset.invoiceId)">View</a> · <a data-invoice-id="' + escAttr(rec.id) + '" onclick="seneiShowPayments(this.dataset.invoiceId)">Pay</a></td>' +
+      '</tr>';
+  }).join('');
+}
+
+// ---- System status (task 8) — valid / empty / unavailable / corrupted ----
+function seneiRefreshSystemStatus(){
+  var list = document.getElementById('systemStatusList');
+  if(!list) return;
+
+  var customers = seneiReadStore(SENEI_KEY_CUSTOMERS, true);
+  var history = seneiReadStore(SENEI_KEY_HISTORY, true);
+  var current = seneiReadStore(SENEI_KEY_CURRENT, false);
+  var payments = seneiReadStore(SENEI_KEY_PAYMENTS, true);
+
+  var seqRaw;
+  try{ seqRaw = localStorage.getItem(SENEI_KEY_SEQ); }catch(e){ seqRaw = undefined; }
+  var seqState, seqDetail;
+  if(seqRaw === null || seqRaw === undefined){
+    seqState = 'missing'; seqDetail = 'Not initialized yet (defaults to 1)';
+  }else if(isNaN(Number(seqRaw))){
+    seqState = 'corrupted'; seqDetail = 'Stored value is not a valid number';
+  }else{
+    seqState = 'valid'; seqDetail = 'Next number: ' + seqRaw;
+  }
+
+  function rowFor(label, result, validText, emptyText, missingText){
+    var dotClass = 'ok', text;
+    if(result.state === 'valid'){ dotClass = 'ok'; text = validText; }
+    else if(result.state === 'empty'){ dotClass = 'warn'; text = emptyText; }
+    else if(result.state === 'missing'){ dotClass = 'warn'; text = missingText; }
+    else { dotClass = 'bad'; text = 'Data error — ' + (result.detail || 'could not be read'); }
+    return '<div class="statusRow"><span><span class="dot ' + dotClass + '"></span>' + label + '</span><span class="poMuted">' + text + '</span></div>';
+  }
+
+  var rows = [];
+  rows.push(rowFor('Customer Database', customers,
+    customers.count + ' record(s) stored', 'No records yet', 'Not initialized yet'));
+  rows.push(rowFor('Invoice History', history,
+    history.count + ' record(s) stored', 'No records yet', 'Not initialized yet'));
+  rows.push(rowFor('Current Draft', current,
+    'Draft saved locally', 'Draft saved locally', 'No draft saved yet'));
+  rows.push(rowFor('Payment Records', payments,
+    payments.count + ' record(s) stored', 'No payments yet', 'Not initialized yet'));
+
+  var seqDot = seqState === 'valid' ? 'ok' : (seqState === 'corrupted' ? 'bad' : 'warn');
+  rows.push('<div class="statusRow"><span><span class="dot ' + seqDot + '"></span>Invoice Numbering</span><span class="poMuted">' + seqDetail + '</span></div>');
+
+  rows.push('<div class="statusRow"><span><span class="dot ok"></span>Local Data Storage</span><span class="poMuted">Active (browser Local Storage)</span></div>');
+
+  list.innerHTML = rows.join('') + '<div class="backupBanner">Reminder: back up your data regularly using "Backup Data" above — the exact time of your last backup is not tracked automatically yet.</div>';
+}
+
+function seneiUpdateHeaderDate(){
+  var el = document.getElementById('shellDate');
+  if(!el) return;
+  var now = new Date();
+  var opts = {year:'numeric', month:'long', day:'numeric'};
+  el.textContent = now.toLocaleDateString('en-GB', opts) + '  ·  User: —';
+}
+
+// Initialize shell on load without interfering with the original
+// V12 render()/loadData() calls already wired at the bottom of the
+// original script above.
+document.addEventListener('DOMContentLoaded', function(){
+  seneiUpdateHeaderDate();
+  seneiRefreshSummaryCards();
+  seneiRenderRecentInvoices();
+  seneiRefreshSystemStatus();
+  seneiRefreshPaymentModule();
+});
+</script>
+</body>
+</html>

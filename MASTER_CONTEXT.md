@@ -26,7 +26,7 @@
 
 ## Candidate Line
 
-V13.4 Outstanding/Aging Candidate was created in a ChatGPT development session and recorded with:
+V13.4 Outstanding/Aging Candidate was recovered from the local backup and imported into this repository at `candidates/V13.4-aging/`. Its package includes:
 
 - outstanding balance grouped by customer
 - aging buckets: 0–30, 31–60, 61–90 and over 90 days
@@ -35,7 +35,7 @@ V13.4 Outstanding/Aging Candidate was created in a ChatGPT development session a
 - Aging validation: 14/14 passed
 - V13.3 Reports regression: 12/12 passed
 
-The exact V13.4 executable and its checksum are not present in this repository at this checkpoint. Chat summaries are handoff evidence, not a substitute for the executable artifact.
+Candidate executable SHA-256: `f46ffcf2481e284ff66f943ccfeeb67297308804484920c44bc2ee170277ae74` — verified against the recorded `SHA256SUMS.txt` in the package.
 
 ## Permanent Rules
 

@@ -1,0 +1,80 @@
+{
+  "runAt": "2026-07-14T15:19:44.458Z",
+  "file": "senei_kotsu_invoice_v13_4_aging_candidate.html",
+  "summary": {
+    "passed": 14,
+    "failed": 0
+  },
+  "results": [
+    {
+      "status": "PASS",
+      "name": "JavaScript syntax",
+      "detail": "Both scripts compile"
+    },
+    {
+      "status": "PASS",
+      "name": "Protected Invoice script",
+      "detail": "Original Invoice/A4 script is byte-identical to V13.3"
+    },
+    {
+      "status": "PASS",
+      "name": "Storage keys preserved",
+      "detail": "No Aging Local Storage key added"
+    },
+    {
+      "status": "PASS",
+      "name": "Read-only Aging",
+      "detail": "Aging render path does not write storage"
+    },
+    {
+      "status": "PASS",
+      "name": "No inferred due date",
+      "detail": "Only enabled Deposit Due Date is used"
+    },
+    {
+      "status": "PASS",
+      "name": "Aging exports",
+      "detail": "Aging CSV export present"
+    },
+    {
+      "status": "PASS",
+      "name": "Customer summary",
+      "detail": "Customer outstanding aggregation present"
+    },
+    {
+      "status": "PASS",
+      "name": "Future bucket",
+      "detail": "Future Deposit Due is not overdue"
+    },
+    {
+      "status": "PASS",
+      "name": "0–30 bucket",
+      "detail": "24 overdue days"
+    },
+    {
+      "status": "PASS",
+      "name": "31–60 bucket",
+      "detail": "55 overdue days"
+    },
+    {
+      "status": "PASS",
+      "name": "61–90 bucket",
+      "detail": "85 overdue days"
+    },
+    {
+      "status": "PASS",
+      "name": "90+ bucket",
+      "detail": "More than 90 overdue days"
+    },
+    {
+      "status": "PASS",
+      "name": "No Due Date bucket",
+      "detail": "Missing due date is never guessed"
+    },
+    {
+      "status": "PASS",
+      "name": "HTML structure",
+      "detail": "div:229/229, section:10/10, table:8/8, style:1/1, script:2/2"
+    }
+  ]
+}
