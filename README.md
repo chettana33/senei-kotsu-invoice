@@ -10,6 +10,16 @@ Production web application for creating invoices, rendering one-page A4 document
 - Invoice renderer: `senei_kotsu_a4_renderer_v1.html`
 - Receipt renderer: `senei_kotsu_receipt_renderer_v1.html`
 
+## Development candidate
+
+- Version: **V13.4 Outstanding/Aging Candidate**
+- Status: Candidate only; not Production. Recovered exact artifact at `candidates/V13.4-aging/`
+- Recorded features: customer outstanding summary, aging buckets, selectable As-of Date and Aging CSV export
+- Recorded validation: Aging 14/14 and Reports regression 12/12
+- Next gate: complete owner acceptance on the owner PC, then approve promotion explicitly
+
+Start continuity work at [`START_HERE.md`](START_HERE.md). The production entry point remains V13.3 until the owner approves a later release.
+
 ## Main features
 
 - Invoice creation, customer database and Invoice History

@@ -1,0 +1,34 @@
+# .cursorrules — senei-kotsu-invoice (พาเที่ยว)
+
+> ใช้กับ Cursor IDE ในโปรเจกต์นี้. อ่าน AGENTS.md ของพาเที่ยวก่อนทำงานเสมอ:
+> H:\My Drive\พาเที่ยว\Obsidian-Vault\AGENTS.md
+
+## ภาษา
+- ตอบภาษาไทย กับผู้ใช้ (พี่เจ). โค้ด/คำสั่ง/API เก็บภาษาอังกฤษตามเดิม
+
+## อ่านก่อนแก้โค้ด (บังคับ ตามลำดับ)
+1. AGENTS.md (ใน Vault ด้านบน) — กฎระบบ
+   - START_HERE.md
+   - MASTER_CONTEXT.md
+   - CURRENT_STATE.md
+   - checkpoints/CHECKPOINT_LATEST.md
+   - README.md
+
+## ขอบเขต context (ประหยัด token)
+- ห้ามสแกน/อ่าน: node_modules/, dist/, releases/, .git/, *.lock
+- ตอบเฉพาะโค้ดส่วนที่แก้/เกี่ยวข้องเท่านั้น — ไม่อธิบายยาว ไม่พิมพ์ไฟล์ทั้งไฟล์ซ้ำ
+- อ้างไฟล์ด้วย path + บรรทัดที่เกี่ยวข้อง
+
+## กติกาแก้โค้ด
+- ห้ามแก้ Approved baseline/version ที่ release แล้ว — ทำ version ใหม่ตาม rules ของโปรเจกต์
+- ทำงานบน branch ที่ถูกต้อง (ดู checkpoint/branch config ก่อน push)
+- commit วินัย: push main = ขึ้น production — ตรวจ diff + รัน build/test ก่อนทุกครั้ง
+- ห้ามเก็บ token/password/secret/API key ในโค้ดหรือ commit
+
+## ตรวจ QA
+- รัน build + test ที่เกี่ยวข้องก่อนสรุป — ห้ามบอกว่าเสร็จถ้าไม่รันจริง
+- ระบุสิ่งที่ยังไม่ได้ทดสอบชัดเจน
+- ถ้ารีวิว: แยก severity Critical / Major / Minor / Nit + หลักฐาน
+
+## ถ้าไม่แน่ใจ
+- ถามพี่เจเฉพาะเรื่องที่เปลี่ยน scope/ความเสี่ยง/ผลลัพธ์ — ห้ามเดาเรื่องค้นหาได้ (ค้น 3 ชั้นก่อน)

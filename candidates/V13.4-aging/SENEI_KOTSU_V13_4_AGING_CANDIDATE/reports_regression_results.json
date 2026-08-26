@@ -1,0 +1,70 @@
+{
+  "runAt": "2026-07-14T15:19:44.407Z",
+  "file": "senei_kotsu_invoice_v13_3_reports_candidate.html",
+  "summary": {
+    "passed": 12,
+    "failed": 0
+  },
+  "results": [
+    {
+      "status": "PASS",
+      "name": "JavaScript syntax",
+      "detail": "Both inline scripts compile"
+    },
+    {
+      "status": "PASS",
+      "name": "Protected Invoice script",
+      "detail": "Original Invoice/A4 logic is byte-identical to V13.2"
+    },
+    {
+      "status": "PASS",
+      "name": "Storage keys preserved",
+      "detail": "No Reports Local Storage key added"
+    },
+    {
+      "status": "PASS",
+      "name": "Renderers preserved",
+      "detail": "Invoice and Receipt renderer links unchanged"
+    },
+    {
+      "status": "PASS",
+      "name": "Reports navigation",
+      "detail": "Reports is a real view"
+    },
+    {
+      "status": "PASS",
+      "name": "Read-only reports",
+      "detail": "Report render path does not write Local Storage"
+    },
+    {
+      "status": "PASS",
+      "name": "Report filters",
+      "detail": "Date, status and search filters present"
+    },
+    {
+      "status": "PASS",
+      "name": "CSV export",
+      "detail": "Filtered Invoice Status export present"
+    },
+    {
+      "status": "PASS",
+      "name": "JPY calculation",
+      "detail": "JPY receipt and outstanding are exact"
+    },
+    {
+      "status": "PASS",
+      "name": "THB conversion",
+      "detail": "THB converts using Invoice rate"
+    },
+    {
+      "status": "PASS",
+      "name": "Outstanding aggregation",
+      "detail": "Current outstanding aggregates per Invoice"
+    },
+    {
+      "status": "PASS",
+      "name": "HTML structure",
+      "detail": "div:217/217, section:10/10, table:6/6, style:1/1, script:2/2"
+    }
+  ]
+}
