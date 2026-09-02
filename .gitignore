@@ -20,3 +20,9 @@ exports/
 Thumbs.db
 .vscode/
 .idea/
+.serena/
+
+# king-bus-taicho auto (local state/log — ห้ามขึ้น GitHub)
+tools/taicho_auto_state.json
+tools/taicho_auto.log
+tools/.taicho_auto.lock
