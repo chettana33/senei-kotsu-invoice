@@ -26,3 +26,8 @@ Thumbs.db
 tools/taicho_auto_state.json
 tools/taicho_auto.log
 tools/.taicho_auto.lock
+
+# Python
+__pycache__/
+*.pyc
+
