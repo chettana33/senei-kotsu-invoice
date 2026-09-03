@@ -457,7 +457,8 @@ def run(dry_run=False):
                 msg = f"✅ 台帳を確認しました（{mmdd}）: 変更なし"
                 log.info("no change for %s", path)
                 if not dry_run:
-                    send_line(msg)
+                    # ส่งลิงก์台帳ด้วย (lessons #62: quickReply หายข้ามวัน — ต้องมี plain text URL + ปุ่มเปิด台帳)
+                    send_line_pdf(f"{msg}\n{SHORT_TAICHO_URL}", TAICHO_WEBAPP_URL)
                     state["processed"].append(os.path.basename(path))
                 else:
                     print(msg)
