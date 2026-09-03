@@ -37,7 +37,9 @@ LINE_CONFIG = r"C:\Users\chett\.config\opencode\gmail-monitor\line_config.json"
 TAICHO_WEBAPP_URL = ("https://script.google.com/macros/s/"
                      "AKfycbym-XXro-jSHP1yO2wgmV4RfNVSPyOFcJdiutRjSfTbEfwkODJxcDySGQ_oZN1rYQbc2A/exec")
 # ส่งเป็น plain text ในข้อความ (quickReply หายเมื่อข้ามวัน — lessons #62): สั้น ดูง่าย, ปลายทาง = เดียวกับข้างบน
-SHORT_TAICHO_URL = "https://tinyurl.com/27lekf3r"
+# 3 ก.ย. 69: tinyurl ตายภายในวันเดียว (ตัวจริงยัง 200) → เปลี่ยนเป็น Vercel redirect ฟรี https://taicho-link.vercel.app
+# (Hobby ไม่ต้องบัตร; vercel.json redirects 307 → exec URL เดิม; แก้ปลายทางที่ D:\GitHub\taicho-link\vercel.json แล้ว vercel deploy --prod)
+SHORT_TAICHO_URL = "https://taicho-link.vercel.app"
 STATE_FILE = os.path.join(TOOLS_DIR, "taicho_auto_state.json")
 LOCK_FILE = os.path.join(TOOLS_DIR, ".taicho_auto.lock")
 FORM_RE = re.compile(r"(\d{4})_千栄交通㈱_貸切バス手配依頼書(?:\(\d+\))?\.xlsx$")
