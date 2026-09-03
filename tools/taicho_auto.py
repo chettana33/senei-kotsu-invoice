@@ -461,6 +461,8 @@ def run(dry_run=False):
                 if not dry_run:
                     # ส่งลิงก์台帳ด้วย (lessons #62: quickReply หายข้ามวัน — ต้องมี plain text URL + ปุ่มเปิด台帳)
                     send_line_pdf(f"{msg}\n{SHORT_TAICHO_URL}", TAICHO_WEBAPP_URL)
+                    # ปิดท้ายสุภาพ (พี่เจสั่ง 3 ก.ย. 69) — ส่งอีกข้อความแยก
+                    send_line("宜しくお願い致します。")
                     state["processed"].append(os.path.basename(path))
                 else:
                     print(msg)
