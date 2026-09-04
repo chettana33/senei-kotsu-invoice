@@ -1,0 +1,10 @@
+{
+  "functions": [
+    {
+      "source": "cloud-functions/cgman-monitor",
+      "codebase": "cgman-monitor",
+      "runtime": "python312",
+      "region": "asia-southeast1"
+    }
+  ]
+}
