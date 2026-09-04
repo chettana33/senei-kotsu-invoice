@@ -32,6 +32,19 @@ def _html_escape(s):
              .replace('"', "&quot;"))
 
 
+def _html_escape_d2(s):
+    """escape + ระบาย 空=ฟ้า ホ=ส้ม (D2 — พี่เจอนุมัติ 5 ก.ย. 69)"""
+    out = []
+    for ch in s:
+        if ch == "空":
+            out.append('<span style="color:#1f61d9">空</span>')
+        elif ch == "ホ":
+            out.append('<span style="color:#de6b0f">ホ</span>')
+        else:
+            out.append(_html_escape(ch))
+    return "".join(out)
+
+
 def _cell_lines(value):
     """แยกค่าเซลล์เป็นบรรทัด (ตัด \n ทิ้ง + ลบบรรทัดว่างปลาย). คืน list[str]."""
     if not value:
@@ -106,15 +119,20 @@ def render_html(taicho, mmdd, month_start=9, month_count=4):
             if not lines:
                 data_cells.append("<td></td>")
             else:
-                inner = "<br>".join(_html_escape(ln) for ln in lines)
+                inner = "<br>".join(_html_escape_d2(ln) for ln in lines)
                 data_cells.append(f"<td>{inner}</td>")
         parts.append(f'<tr class="data-row"><td>千栄1568</td>{"".join(data_cells)}</tr>')
         parts.append("</table>")
-        parts.append('<div class="legend">'
-                     '<span><span class="dot">🟡</span>変更は</span>'
-                     '<span><span class="dot">🟢</span>新規は</span>'
-                     '<span><span class="dot">🔷</span>経由地</span></div>')
         parts.append("</div>")
+    # legend ชุดเดียวท้ายตาราง (พี่เจสั่ง 5 ก.ย. 69)
+    parts.append('<div class="legend" style="display:block">'
+                 '<span><span class="dot">🟡</span>変更は</span>'
+                 '<span style="margin-left:14pt"><span class="dot">🟢</span>新規は</span></div>')
+    parts.append('<div class="legend" style="display:block;margin-top:4pt">'
+                 '<span style="color:#de6b0f">ホ</span>=ホテル（橙）　'
+                 '<span style="color:#1f61d9">空</span>=空港（青）　左=出発　右=行先'
+                 '<br/><span style="color:#de6b0f">ホ</span> 09:00 1H '
+                 '<span style="color:#1f61d9">空</span> ＝ ホテルから空港（1H 経由）</div>')
     parts.append("</body></html>")
     return "\n".join(parts)
 

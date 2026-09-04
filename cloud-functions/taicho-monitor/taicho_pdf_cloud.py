@@ -72,8 +72,29 @@ def _emoji_ratio(name):
         return im.size
 
 
+def _esc_color(s):
+    """escape HTML + ระบาย 空=ฟ้า(#1f61d9) ホ=ส้ม(#de6b0f) — ตรง D2 ใน台帳"""
+    out = []
+    for ch in s:
+        if ch == "空":
+            out.append('<font color="#1f61d9">空</font>')
+        elif ch == "ホ":
+            out.append('<font color="#de6b0f">ホ</font>')
+        elif ch == "&":
+            out.append("&amp;")
+        elif ch == "<":
+            out.append("&lt;")
+        elif ch == ">":
+            out.append("&gt;")
+        elif ch == '"':
+            out.append("&quot;")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 def _line_html(line, emoji_h):
-    """แปลง 1 บรรทัดของเซลล์ → HTML สำหรับ Paragraph: emoji กลายเป็น <img> inline.
+    """แปลง 1 บรรทัดของเซลล์ → HTML สำหรับ Paragraph: emoji กลายเป็น <img> inline, D2 สี.
     emoji_h = ความสูงที่ต้องการแสดง (pt) — ความกว้างตามสัดส่วน PNG."""
     parts = re.split("([" + "".join(re.escape(e) for e in EMOJI_IMG) + "])", line)
     html = []
@@ -85,7 +106,7 @@ def _line_html(line, emoji_h):
             wpt = emoji_h * w / h
             html.append(f'<img src="{EMOJI_IMG[p]}" width="{wpt:.2f}" height="{emoji_h:.2f}"/>')
         else:
-            html.append(_esc(p))
+            html.append(_esc_color(p))
     return "".join(html)
 
 
@@ -169,11 +190,20 @@ def _month_flow(taicho, m):
     tbl.setStyle(TableStyle(style))
 
     st_leg = ParagraphStyle("leg", fontName=FONT_NAME, fontSize=5, leading=6.5)
-    leg = Paragraph(
+    return KeepTogether([tbl, Spacer(1, 4)])
+
+
+def _legend_flowables():
+    """legend ชุดเดียวท้ายตาราง (พี่เจสั่ง 5 ก.ย. 69): ตรงเครื่องหมายจริง = flag + D2"""
+    st_leg = ParagraphStyle("leg", fontName=FONT_NAME, fontSize=5, leading=7)
+    p1 = Paragraph(
         "変更は" + _line_html("🟡", 7) +
-        "&nbsp;&nbsp;新規は" + _line_html("🟢", 7) +
-        "&nbsp;&nbsp;経由地" + _line_html("🔷", 7), st_leg)
-    return KeepTogether([tbl, Spacer(1, 2), leg, Spacer(1, 4)])
+        "&nbsp;&nbsp;&nbsp;新規は" + _line_html("🟢", 7), st_leg)
+    p2 = Paragraph(
+        'ホ＝ホテル（橙）　空＝空港（青）　左=出発　右=行先<br/>'
+        '例：<font color="#de6b0f">ホ</font> 09:00 1H <font color="#1f61d9">空</font> ＝ ホテルから空港（1H 経由）',
+        st_leg)
+    return [p1, p2]
 
 
 def render_taicho_pdf(taicho, mmdd, out_path):
@@ -189,5 +219,6 @@ def render_taicho_pdf(taicho, mmdd, out_path):
     story = []
     for m in months:
         story.append(_month_flow(taicho, m))
+    story += _legend_flowables()
     doc.build(story)
     return out_path

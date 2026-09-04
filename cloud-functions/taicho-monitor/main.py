@@ -46,6 +46,11 @@ STATE_NAME = "taicho_cloud_state.json"
 TAICHO_WEBAPP_URL = ("https://script.google.com/macros/s/"
                      "AKfycbym-XXro-jSHP1yO2wgmV4RfNVSPyOFcJdiutRjSfTbEfwkODJxcDySGQ_oZN1rYQbc2A/exec")
 SHORT_TAICHO_URL = "https://taicho-link.vercel.app"
+# D2 ทิศทาง (พี่เจอนุมัติ 5 ก.ย. 69): ซ้าย=出発(จาก) ขวา=行先(ไป), 空=ฟ้า ホ=ส้ม
+ROUTE_CODE = {"HTL": "ホ", "AP1": "空", "AP2": "空"}
+C_BLUE = {"red": 0.12, "green": 0.38, "blue": 0.85}
+C_ORANGE = {"red": 0.87, "green": 0.42, "blue": 0.06}
+LEGEND_ROWS = ["変更は🟡", "新規は🟢", "ホ＝ホテル（橙）　空＝空港（青）　左=出発　右=行先"]
 
 
 def env(key):
@@ -374,7 +379,56 @@ def hours_from(keiyu):
     return None
 
 
+def col_index(col):
+    """'A'->0 ... 'Z'->25, 'AA'->26 ..."""
+    if len(col) == 1:
+        return ord(col[0]) - 65
+    return (ord(col[0]) - 65) * 26 + (ord(col[1]) - 65) + 26
+
+
+def d2_text(entry):
+    """entry {t, h?, D, G} -> ข้อความ D2: 'ホ 10:00 2H 空' (ไม่มีรหัส D/G = คงแบบเดิม '10:00 2H')"""
+    o = ROUTE_CODE.get(entry.get("D", "")) or ""
+    g2 = ROUTE_CODE.get(entry.get("G", "")) or ""
+    t = entry["t"]
+    h = entry.get("h") or ""
+    mid = f"{t}" + (f" {h}" if h else "")
+    if o and g2:
+        return f"{o} {mid} {g2}"
+    return mid
+
+
+def color_runs(text):
+    """runs สี: ทุก 空 = ฟ้า, ホ = ส้ม (textFormatRuns มีแค่ startIndex + format)"""
+    runs = []
+    off = 0
+    for ch in text:
+        n = len(ch.encode("utf-16-le")) // 2
+        col = C_BLUE if ch == "空" else C_ORANGE if ch == "ホ" else None
+        if col:
+            runs.append({"startIndex": off, "format": {"foregroundColor": col}})
+        off += n
+    return runs
+
+
+def cell_canon(text):
+    """คืนชุด (เวลา, ชั่วโมง) ของเซลล์/บรรทัดหลายบรรทัด สำหรับ diff — ไม่สน 空/ホ/🔷/flag"""
+    pairs = []
+    for ln in (text or "").split("\n"):
+        ln = ln.strip()
+        m = re.search(r"(\d{2}:\d{2})", ln)
+        if not m:
+            continue
+        h = None
+        hm = re.search(r"(\d+)H", ln)
+        if hm:
+            h = hm.group(1)
+        pairs.append((m.group(1), h or ""))
+    return "|".join(f"{t} {h}".strip() for t, h in sorted(pairs))
+
+
 def parse_form_bytes(data):
+    """อ่านใบขอรถ -> {date: [entry]} โดย entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)"""
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
     out = {}
     for tab, month in TAB_MONTHS.items():
@@ -395,11 +449,11 @@ def parse_form_bytes(data):
             e = ws.cell(row=r, column=5).value
             f = ws.cell(row=r, column=6).value
             h = hours_from(e) or hours_from(f)
-            entry = f"🔷{c} {h}" if h else c
-            out.setdefault(d, []).append(entry)
+            D = str(ws.cell(row=r, column=4).value or "").strip()
+            G = str(ws.cell(row=r, column=7).value or "").strip()
+            out.setdefault(d, []).append({"t": c, "h": h, "D": D, "G": G})
     def _tk(e):
-        m = re.search(r"(\d{2}):(\d{2})", e)
-        return m.groups() if m else ("99", "99")
+        return tuple(re.match(r"(\d{2}):(\d{2})", e["t"]).groups())
     return {d: sorted(v, key=_tk) for d, v in out.items()}
 
 
@@ -408,20 +462,40 @@ def strip_flags(s):
 
 
 def build_plan(form_rows):
+    """diff D2-aware: เทียบ (เวลา+ชั่วโมง) เท่านั้น กัน 空/ホ/🔷 รบกวน.
+    plan[month][day] = (target_text, reason, cur) — target_text = บรรทัด D2 รวมของใบนี้"""
     taicho = read_taicho()
     plan = {}
     for d, entries in sorted(form_rows.items()):
         month = d.month
         if month not in taicho:
             continue
-        target = "\n".join(entries)
+        target_text = "\n".join(d2_text(e) for e in entries)
         current = taicho[month]["cells"].get(d.day)
         cur_str = str(current) if current is not None else None
-        if strip_flags(cur_str) != target:
-            reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)" if target == "" else (
+        if cell_canon(cur_str) != cell_canon(target_text):
+            reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)" if not entries else (
                 "ลงใหม่" if cur_str is None else "แก้ไข")
-            plan.setdefault(month, {})[d.day] = (target, reason, cur_str)
+            plan.setdefault(month, {})[d.day] = (target_text, reason, cur_str)
     return plan
+
+
+def write_cell_rich(entry_row, day, text, runs):
+    """เขียนเซลล์วัน (row 1-based, day 1-31) พร้อม rich text runs (สี D2)"""
+    name, gid = find_main_tab()
+    if not name:
+        raise RuntimeError("ไม่พบ tab 台帳 หลัก")
+    col = col_for_day(day)
+    ci = col_index(col)
+    req = {
+        "updateCells": {
+            "range": {"sheetId": gid, "startRowIndex": entry_row - 1, "startColumnIndex": ci,
+                      "endRowIndex": entry_row, "endColumnIndex": ci + 1},
+            "rows": [{"values": [{"userEnteredValue": {"stringValue": text},
+                                  "textFormatRuns": runs}]}],
+            "fields": "userEnteredValue,textFormatRuns",
+        }}
+    batch_update([req])
 
 
 def apply_plan(plan, dry_run=True):
@@ -429,15 +503,20 @@ def apply_plan(plan, dry_run=True):
     for month, days in sorted(plan.items()):
         entry_row = taicho[month]["row"]
         for day in sorted(days):
-            target, reason, cur = days[day]
+            target_text, reason, cur = days[day]
             col = col_for_day(day)
             rng = f"{col}{entry_row}"
-            write_val = (target + "🟢") if target else target
             if dry_run:
-                print(f"  [{reason}] {month}月{day:02d} {rng}: {cur!r} -> {write_val!r}", flush=True)
-            else:
-                sheets_update(rng, [[write_val]])
-                print(f"  [เขียน] {month}月{day:02d} {rng}: {cur!r} -> {write_val!r}", flush=True)
+                print(f"  [{reason}] {month}月{day:02d} {rng}: {cur!r} -> {target_text!r}", flush=True)
+                continue
+            text = target_text
+            runs = color_runs(text)
+            if text:
+                # flag 🟢 = เที่ยวที่ระบบเขียนวันนี้ (ต่อท้ายบรรทัดสุดท้าย เหมือนของเดิม)
+                text = text + " 🟢"
+                runs = color_runs(text)
+            write_cell_rich(entry_row, day, text, runs)
+            print(f"  [เขียน D2] {month}月{day:02d} {rng}: {cur!r} -> {text!r}", flush=True)
 
 
 # ---------------- flags / rotate ----------------
@@ -458,7 +537,7 @@ def clear_stale_flags(state):
             if "🟢" in v or "🟡" in v:
                 clean = strip_flags(v)
                 if clean != v:
-                    sheets_update(f"{col_for_day(day)}{row}", [[clean]])
+                    write_cell_rich(row, day, clean, color_runs(clean))
                     n += 1
     state["last_flag_date"] = today
     print(f"cleared {n} stale flag(s)", flush=True)
@@ -530,7 +609,7 @@ def rotate_table_if_needed():
              body={"values": [[f"{new_year}年 {new_month}月"] + days, [None] * 33, [None] * 33,
                               ["千栄1568"] + [None] * 32, [None] * 33, [None] + days, [None] * 33,
                               ["変更は🟡"] + [None] * 32, ["新規は🟢"] + [None] * 32,
-                              ["経由地🔷"] + [None] * 32]})
+                              [LEGEND_ROWS[2]] + [None] * 32]})
         batch_update([{"updateSheetProperties": {"properties": {"sheetId": new_gid, "title": new_title},
                                                  "fields": "title"}}])
         reqs = [
@@ -553,6 +632,8 @@ def rotate_table_if_needed():
                         "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}},
         ]
         t_new = read_taicho()
+        m_list = list(t_new.keys())
+        bottom = m_list[-1]
         for m, info in t_new.items():
             hdr = info["row"] - 3
             r, g, b = HEADER_COLOR.get(m, (0.9, 0.9, 0.9))
@@ -560,6 +641,15 @@ def rotate_table_if_needed():
                         "endRowIndex": hdr, "startColumnIndex": 0, "endColumnIndex": 33},
                         "cell": {"userEnteredFormat": {"backgroundColor": {"red": r, "green": g, "blue": b}}},
                         "fields": "userEnteredFormat.backgroundColor"}})
+            # legend = ชุดเดียวที่บล็อกล่างสุด (พี่เจสั่ง 5 ก.ย. 69) — ล้างบล็อกอื่น
+            if m != bottom:
+                base = info["row"] + 3  # 0-based ของ legend row แรก (entry+4)
+                for rr in range(base, base + 3):
+                    reqs.append({"updateCells": {
+                        "range": {"sheetId": new_gid, "startRowIndex": rr, "endRowIndex": rr + 1,
+                                  "startColumnIndex": 0, "endColumnIndex": 1},
+                        "rows": [{"values": [{"userEnteredValue": {"stringValue": ""}}]}],
+                        "fields": "userEnteredValue"}})
         batch_update(reqs)
         print(f"rotate: {new_title}", flush=True)
     return rotated

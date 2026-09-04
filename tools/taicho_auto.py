@@ -290,7 +290,7 @@ def clear_stale_flags(state):
             if "🟢" in v or "🟡" in v:
                 clean = tg.strip_flags(v)
                 if clean != v:
-                    tg.sheets_update(f"{tg.col_for_day(day)}{row}", [[clean]])
+                    tg.write_cell_rich(row, day, clean, tg.color_runs(clean))
                     n += 1
     state["last_flag_date"] = today
     log.info("cleared %d stale flag(s) (วันใหม่)", n)
@@ -389,7 +389,7 @@ def rotate_table_if_needed():
             [None] * 33,
             ["変更は🟡"] + [None] * 32,
             ["新規は🟢"] + [None] * 32,
-            ["経由地🔷"] + [None] * 32,
+            ["ホ＝ホテル（橙）　空＝空港（青）　左=出発　右=行先"] + [None] * 32,
         ])
 
         # 5) rename tab ใหม่ (ก่อน format — จะได้อ่าน header จริงผ่าน find_main_tab)
@@ -423,6 +423,8 @@ def rotate_table_if_needed():
                 "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}},
         ]
         # สี header ทุกเดือนใน tab ใหม่ (ตาม 30/31 วัน)
+        m_list = list(t_new.keys())
+        bottom = m_list[-1]
         for m, info in t_new.items():
             hdr = info["row"] - 3
             r, g, b = HEADER_COLOR.get(m, (0.9, 0.9, 0.9))
@@ -431,6 +433,15 @@ def rotate_table_if_needed():
                           "startColumnIndex": 0, "endColumnIndex": 33},
                 "cell": {"userEnteredFormat": {"backgroundColor": {"red": r, "green": g, "blue": b}}},
                 "fields": "userEnteredFormat.backgroundColor"}})
+            # legend ชุดเดียวที่บล็อกล่างสุด (พี่เจสั่ง 5 ก.ย. 69)
+            if m != bottom:
+                base = info["row"] + 3
+                for rr in range(base, base + 3):
+                    reqs.append({"updateCells": {
+                        "range": {"sheetId": new_gid, "startRowIndex": rr, "endRowIndex": rr + 1,
+                                  "startColumnIndex": 0, "endColumnIndex": 1},
+                        "rows": [{"values": [{"userEnteredValue": {"stringValue": ""}}]}],
+                        "fields": "userEnteredValue"}})
         _sheets_batch_by_gid(new_gid, reqs)
         log.info("rotate: สร้าง tab ใหม่ %s (ลบ %d月, เพิ่ม %d年%d月)", new_title, first, new_year, new_month)
     return rotated

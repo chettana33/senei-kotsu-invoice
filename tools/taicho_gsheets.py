@@ -222,8 +222,80 @@ def hours_from(keiyu):
     return None
 
 
+# D2 ทิศทาง (mirror cloud main.py — พี่เจอนุมัติ 5 ก.ย. 69): ซ้าย=出発 ขวา=行先, 空=ฟ้า ホ=ส้ม
+ROUTE_CODE = {"HTL": "ホ", "AP1": "空", "AP2": "空"}
+C_BLUE = {"red": 0.12, "green": 0.38, "blue": 0.85}
+C_ORANGE = {"red": 0.87, "green": 0.42, "blue": 0.06}
+
+
+def col_index(col):
+    """'A'->0 ... 'Z'->25, 'AA'->26 ..."""
+    if len(col) == 1:
+        return ord(col[0]) - 65
+    return (ord(col[0]) - 65) * 26 + (ord(col[1]) - 65) + 26
+
+
+def d2_text(entry):
+    """entry {t, h?, D, G} -> 'ホ 10:00 2H 空' (ไม่มีรหัส = คงแบบเดิม '10:00 2H')"""
+    o = ROUTE_CODE.get(entry.get("D", "")) or ""
+    g2 = ROUTE_CODE.get(entry.get("G", "")) or ""
+    t = entry["t"]
+    h = entry.get("h") or ""
+    mid = f"{t}" + (f" {h}" if h else "")
+    return f"{o} {mid} {g2}" if (o and g2) else mid
+
+
+def color_runs(text):
+    """runs สี ทุก 空=ฟ้า / ホ=ส้ม (textFormatRuns = startIndex + format)"""
+    runs = []
+    off = 0
+    for ch in text:
+        n = len(ch.encode("utf-16-le")) // 2
+        col = C_BLUE if ch == "空" else C_ORANGE if ch == "ホ" else None
+        if col:
+            runs.append({"startIndex": off, "format": {"foregroundColor": col}})
+        off += n
+    return runs
+
+
+def cell_canon(text):
+    """ชุด (เวลา, ชั่วโมง) ของข้อความหลายบรรทัด สำหรับ diff — ไม่สน 空/ホ/🔷/flag"""
+    pairs = []
+    for ln in (text or "").split("\n"):
+        m = re.search(r"(\d{2}:\d{2})", ln)
+        if not m:
+            continue
+        h = None
+        hm = re.search(r"(\d+)H", ln)
+        if hm:
+            h = hm.group(1)
+        pairs.append((m.group(1), h or ""))
+    return "|".join(f"{t} {h}".strip() for t, h in sorted(pairs))
+
+
+def write_cell_rich(entry_row, day, text, runs):
+    """เขียนเซลล์วันพร้อม rich runs (สี D2) — ใช้ batchUpdate (runs ใส่กับ values PUT ไม่ได้)"""
+    tok = get_token()
+    name, gid = find_main_tab()
+    col = col_for_day(day)
+    ci = col_index(col)
+    body = json.dumps({"requests": [{
+        "updateCells": {
+            "range": {"sheetId": gid, "startRowIndex": entry_row - 1, "startColumnIndex": ci,
+                      "endRowIndex": entry_row, "endColumnIndex": ci + 1},
+            "rows": [{"values": [{"userEnteredValue": {"stringValue": text},
+                                  "textFormatRuns": runs}]}],
+            "fields": "userEnteredValue,textFormatRuns",
+        }}]}).encode()
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}:batchUpdate"
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers={"Authorization": f"Bearer {tok}",
+                                          "Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=30).read()
+
+
 def read_request_form(path):
-    """อ่านใบขอรถ: คืน dict {date: list[(time_str, keiyu_h)]} เฉพาะ tab 26.8-27.03."""
+    """อ่านใบขอรถ: คืน dict {date: [entry]} entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)"""
     wb = openpyxl.load_workbook(path, data_only=True)
     out = {}
     for tab, month in TAB_MONTHS.items():
@@ -244,16 +316,12 @@ def read_request_form(path):
             e = ws.cell(row=r, column=5).value  # 経由地①
             f = ws.cell(row=r, column=6).value  # 経由地②
             h = hours_from(e) or hours_from(f)
-            entry = f"🔷{c} {h}" if h else c
-            out.setdefault(d, []).append(entry)
-    # เรียงเวลาน้อย -> มาก ต่อวัน (parse HH:MM จาก entry)
-    def time_key(entry):
-        m = re.search(r"(\d{2}):(\d{2})", entry)
-        return (m.group(1), m.group(2)) if m else ("99", "99")
-
+            D = str(ws.cell(row=r, column=4).value or "").strip()  # 配車場所
+            G = str(ws.cell(row=r, column=7).value or "").strip()  # 行先
+            out.setdefault(d, []).append({"t": c, "h": h, "D": D, "G": G})
     for d in out:
-        # เก็บเวลาซ้ำ (รถ 2 คันเวลาเดียวกัน เช่น 09:30 x2) — set() ตัดซ้ำ ผิด (29 ส.ค. 69)
-        out[d] = sorted(out[d], key=time_key)
+        # เก็บเวลาซ้ำ (รถ 2 คันเวลาเดียวกัน) — set() ตัดซ้ำ ผิด (29 ส.ค. 69)
+        out[d] = sorted(out[d], key=lambda e: (e["t"][:2], e["t"][3:]))
     return out
 
 
@@ -265,20 +333,20 @@ def strip_flags(s):
 
 
 def build_plan(form_rows):
-    """คืน dict {month: {day: (target_str|None, reason)}} เทียบกับ台帳."""
+    """คืน dict {month: {day: (target_text, reason, cur)}} — diff แบบ D2-aware (เวลา+ชั่วโมง)"""
     taicho = read_taicho()
     plan = {}
     for d, entries in sorted(form_rows.items()):
         month = d.month
         if month not in taicho:
-            continue  # เดือนนี้ยังไม่มี section ใน sheet (7月-10月(2026)) — ข้าม
-        target = "\n".join(entries)
+            continue  # เดือนนี้ยังไม่มี section ใน sheet — ข้าม
+        target_text = "\n".join(d2_text(e) for e in entries)
         current = taicho.get(month, {}).get("cells", {}).get(d.day)
         cur_str = str(current) if current is not None else None
-        if strip_flags(cur_str) != target:
-            reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)" if target == "" else (
+        if cell_canon(cur_str) != cell_canon(target_text):
+            reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)" if not entries else (
                 "ลงใหม่" if cur_str is None else "แก้ไข")
-            plan.setdefault(month, {})[d.day] = (target, reason, cur_str)
+            plan.setdefault(month, {})[d.day] = (target_text, reason, cur_str)
     return plan
 
 
@@ -286,18 +354,18 @@ def apply_plan(plan, dry_run=True):
     for month, days in sorted(plan.items()):
         entry_row = read_taicho()[month]["row"]
         for day in sorted(days):
-            target, reason, cur = days[day]
+            target_text, reason, cur = days[day]
             col = col_for_day(day)
-            rng = f"{col}{entry_row}"
-            # 🟢 = อัปเดต/เพิ่มวันนี้ (SOP: งานที่อัปเดตวันนี้ แม้เป็น電話変更 ให้ใช้ 🟢)
-            # ต่อท้าย cell (หลังบรรทัดสุดท้าย ตาม format จริง: '16:05\n20:25🟡'); ลบ = ว่าง ไม่เติม
-            write_val = (target + "🟢") if target else target
+            # 🟢 = อัปเดต/เพิ่มวันนี้ (ต่อท้ายเหมือนของเดิม) — เขียน rich text กันสี D2 หลุด
+            text = target_text
+            if text:
+                text = text + " 🟢"
             if dry_run:
                 print(f"  [{reason}] {month}月{day:02d} {col}{entry_row}: "
-                      f"{cur!r} -> {write_val!r}")
+                      f"{cur!r} -> {text!r}")
             else:
-                sheets_update(rng, [[write_val]])
-                print(f"  [เขียน] {month}月{day:02d} {col}{entry_row}: {cur!r} -> {write_val!r}")
+                write_cell_rich(entry_row, day, text, color_runs(text))
+                print(f"  [เขียน D2] {month}月{day:02d} {col}{entry_row}: {cur!r} -> {text!r}")
                 time.sleep(0.4)
 
 
