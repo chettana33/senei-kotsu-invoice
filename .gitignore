@@ -33,3 +33,7 @@ __pycache__/
 
 
 cloud-functions/**/.envcloud-functions/**/venv/cloud-functions/**/__pycache__/cloud-functions/**/.venv/
+
+cloud-functions/**/.env
+cloud-functions/**/venv/
+cloud-functions/**/__pycache__/

@@ -3,8 +3,12 @@
     {
       "source": "cloud-functions/cgman-monitor",
       "codebase": "cgman-monitor",
-      "runtime": "python312",
-      "region": "asia-southeast1"
+      "runtime": "python312"
+    },
+    {
+      "source": "cloud-functions/taicho-monitor",
+      "codebase": "taicho-monitor",
+      "runtime": "python312"
     }
   ]
 }
