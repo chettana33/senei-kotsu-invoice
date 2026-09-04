@@ -37,3 +37,6 @@ cloud-functions/**/.envcloud-functions/**/venv/cloud-functions/**/__pycache__/cl
 cloud-functions/**/.env
 cloud-functions/**/venv/
 cloud-functions/**/__pycache__/
+
+# firebase deploy log
+firebase-debug.log*
