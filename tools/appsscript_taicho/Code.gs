@@ -94,6 +94,23 @@ function escapeHtml(s) {
       .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+/** escape + ระบาย D2: 空=ฟ้า(#1f61d9) ホ=ส้ม(#de6b0f) — พี่เจอนุมัติ 5 ก.ย. 69. */
+function escapeHtmlD2(s) {
+  var out = [];
+  var str = String(s);
+  for (var i = 0; i < str.length; i++) {
+    var ch = str.charAt(i);
+    if (ch === "\u7a7a") { // 空
+      out.push('<span class="d2-air">空</span>');
+    } else if (ch === "\u30db") { // ホ
+      out.push('<span class="d2-hotel">ホ</span>');
+    } else {
+      out.push(escapeHtml(ch));
+    }
+  }
+  return out.join("");
+}
+
 /** ค่าเซลล์ → บรรทัด (ตัด \n + ลบบรรทัดว่าง). */
 function cellLines(value) {
   if (!value) return [];
@@ -144,6 +161,7 @@ function renderHtml(taicho) {
   p.push('  padding: 1pt 0.5pt; white-space: nowrap; overflow: visible; line-height: 1.3; }');
   p.push('.data-row td:first-child { font-size: 5pt; white-space: normal; text-align: center;');
   p.push('  padding-left: 0; vertical-align: middle; }');
+  p.push('.d2-air { color: #1f61d9; } .d2-hotel { color: #de6b0f; }');
   p.push('.legend { margin-top: 2pt; font-size: 5pt; font-weight: bold; display: flex; gap: 10pt; }');
   p.push('.legend .dot { margin-right: 3pt; }');
   p.push('@media print { .print-btn { display: none; } .rotate-hint { display: none !important; } }');
@@ -171,17 +189,22 @@ function renderHtml(taicho) {
       if (!lines.length) dataCells.push("<td></td>");
       else {
         var inner = [];
-        for (var li = 0; li < lines.length; li++) inner.push(escapeHtml(lines[li]));
+        for (var li = 0; li < lines.length; li++) inner.push(escapeHtmlD2(lines[li]));
         dataCells.push("<td>" + inner.join("<br>") + "</td>");
       }
     }
     p.push('<tr class="data-row"><td>千栄1568</td>' + dataCells.join("") + '</tr>');
     p.push('</table>');
-    p.push('<div class="legend"><span><span class="dot">🟡</span>変更は</span>' +
-           '<span><span class="dot">🟢</span>新規は</span>' +
-           '<span><span class="dot">🔷</span>経由地</span></div>');
     p.push('</div>');
   }
+  // legend ชุดเดียวท้ายตาราง (พี่เจสั่ง 5 ก.ย. 69)
+  p.push('<div class="legend" style="display:block">' +
+         '<span><span class="dot">🟡</span>変更は</span>' +
+         '<span style="margin-left:14pt"><span class="dot">🟢</span>新規は</span></div>');
+  p.push('<div class="legend" style="display:block;margin-top:4pt">' +
+         '<span class="d2-hotel">ホ</span>=ホテル（橙）　' +
+         '<span class="d2-air">空</span>=空港（青）　左=出発　右=行先<br/>' +
+         '<span class="d2-hotel">ホ</span> 09:00 1H <span class="d2-air">空</span> ＝ ホテルから空港（1H 経由）</div>');
   p.push('</body></html>');
   return p.join("");
 }
