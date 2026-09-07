@@ -2,9 +2,8 @@
 """
 台帳 auto update — Cloud Function (Firebase gen2, HTTP) — cloud version ของ taicho_auto.py
 Flow: Drive (ใบขอรถ xlsx ใหม่) -> diff 台帳 -> apply sheets -> LINE (text + webapp link)
-       -> PDF archive (phase 2b: reportlab ล้วน — taicho_pdf_cloud.py — ไม่ต้อง browser)
-PDF รายวัน: สร้างหลัง apply สำเร็จ (เช่น local เดิม) แล้วอัปโหลด Drive โฟลเดอร์เดือนเดียวกัน;
-LINE ยังส่งลิงก์ Web App (เหมือน local — PDF = ไฟล์เก็บหลักฐาน)
+PDF: สร้างที่เครื่องเท่านั้น (HTML+Edge, emoji ตัวจริง — พี่เจ reject reportlab PNG 7 ก.ย. 69)
+      ใช้ tools/taicho_pdf.py + ตรวจ tools/taicho_qa.py — ดู system-rules/taicho.md
 State (processed + last_flag_date) = ไฟล์ JSON ใน Drive root (taicho_cloud_state.json)
 Env: SHEETS_CLIENT_ID / SHEETS_CLIENT_SECRET / SHEETS_REFRESH_TOKEN (kimonoland sheets token,
      scope มี drive ด้วย — ใช้เรียก Drive API) / LINE_CHANNEL_ID / LINE_CHANNEL_SECRET / LINE_USER_IDS
@@ -14,7 +13,6 @@ import io
 import json
 import os
 import re
-import tempfile
 import time
 import urllib.parse
 import urllib.request
@@ -24,8 +22,6 @@ from datetime import date
 from firebase_functions import https_fn
 from firebase_functions.options import SupportedRegion
 import openpyxl
-
-import taicho_pdf_cloud as tpc  # PDF renderer reportlab (phase 2b)
 
 SHEET_ID = "1H2WE2D8ZXrAI4jdOUm2N6DYGCWVD1SrYy9BqAfRFdC0"
 SHEETS_API = "https://sheets.googleapis.com/v4/spreadsheets"
@@ -166,7 +162,10 @@ def save_state(state, token):
     urllib.request.urlopen(req, timeout=30).read()
 
 
-# ---------------- PDF archive (phase 2b) ----------------
+# ---------------- PDF: ถอดออกจาก cloud แล้ว (7 ก.ย. 69) ----------------
+# PDF 台帳 ต้อง HTML+Edge ที่เครื่องเท่านั้น (emoji ตัวจริง — พี่เจ reject reportlab PNG, lessons #82)
+# ดู rules: 00_SOP_Master/01_AI_Protocols/system-rules/taicho.md + QA: tools/taicho_qa.py
+# cloud function นี้ = apply + LINE เท่านั้น (PDF สร้างที่เครื่อง: python tools/taicho_pdf.py pdf --date MMDD)
 
 def pdf_filename(mm, mmdd):
     """ชื่อไฟล์ PDF ตามเดือนไส้ใน (ตรง tools/taicho_gsheets.py pdf_filename):
@@ -182,66 +181,6 @@ def _drive_find_file(name, parent, token):
     q = f"name='{name}' and '{parent}' in parents and trashed=false"
     r = _api("GET", f"{DRIVE_API}/files?q={urllib.parse.quote(q)}&fields=files(id,name)", token)
     return (r.get("files") or [{}])[0].get("id")
-
-
-def _multipart(meta, media, boundary):
-    head = (f"--{boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n"
-            + meta + f"\r\n--{boundary}\r\nContent-Type: application/pdf\r\n\r\n").encode()
-    tail = f"\r\n--{boundary}--\r\n".encode()
-    return head + media + tail
-
-
-def _drive_upload_pdf(name, parent, data, token):
-    """สร้างไฟล์ PDF ในโฟลเดอร์ Drive (ไม่มี = create; มีชื่อซ้ำ = update media กันกองซ้ำ)"""
-    fid = _drive_find_file(name, parent, token)
-    if fid:
-        # PATCH media บางที 400 transient หลัง create ใหม่ (race) — retry 1 ครั้ง
-        for attempt in (1, 2):
-            try:
-                req = urllib.request.Request(
-                    f"https://www.googleapis.com/upload/drive/v3/files/{fid}?uploadType=media",
-                    data=data, method="PATCH",
-                    headers={"Authorization": f"Bearer {token}",
-                             "Content-Type": "application/pdf"})
-                urllib.request.urlopen(req, timeout=60).read()
-                return fid
-            except urllib.error.HTTPError:
-                if attempt == 1:
-                    time.sleep(2)
-                    continue
-                raise
-    boundary = "taicho_pdf_boundary_7f3a"
-    meta = json.dumps({"name": name, "parents": [parent]})
-    body = _multipart(meta, data, boundary)
-    req = urllib.request.Request(
-        f"https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name",
-        data=body, method="POST",
-        headers={"Authorization": f"Bearer {token}",
-                 "Content-Type": f"multipart/form-data; boundary={boundary}"})
-    return json.loads(urllib.request.urlopen(req, timeout=60).read()).get("id")
-
-
-def archive_pdf(mmdd, token):
-    """สร้าง PDF 台帳 (reportlab) จากสถานะ tab ปัจจุบัน → อัป Drive โฟลเดอร์เดือนของใบขอรถ
-    (โฟลเดอร์เดียวกับที่ local เดิมเก็บ: .../台帳入力（配車時間入力）/<ปี>/<mm>月).
-    ล้ม = raise (caller จับแล้วไม่บล็อก flow)"""
-    mm = int(mmdd[0:2])
-    folder = drive_resolve(DRIVE_PATH + [str(2026 if mm >= 8 else 2027), f"{mm}月"], token)
-    fd, tmp = tempfile.mkstemp(suffix=".pdf")
-    os.close(fd)
-    try:
-        taicho = read_taicho()
-        tpc.render_taicho_pdf(taicho, mmdd, tmp)
-        with open(tmp, "rb") as f:
-            data = f.read()
-        name = pdf_filename(mm, mmdd)
-        fid = _drive_upload_pdf(name, folder, data, token)
-        print(f"PDF archived: {name} ({len(data)} bytes, drive id {fid})", flush=True)
-    finally:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
 
 
 def list_forms(token):
@@ -704,10 +643,9 @@ def run_flow():
             msg = (f"📋 台帳を自動更新しました（{mmdd}、{total}箇所）:\n" + "\n".join(lines))
             send_line(msg)
             send_line(f"📄 台帳を開く（{mmdd}）\n{SHORT_TAICHO_URL}")
-            try:
-                archive_pdf(mmdd, token)  # phase 2b: PDF reportlab -> Drive โฟลเดอร์เดือน
-            except Exception as e:
-                print(f"PDF archive failed ({mmdd}): {e}", flush=True)
+            # PDF สร้างที่เครื่องเท่านั้น (HTML+Edge — พี่เจ reject reportlab PNG 7 ก.ย. 69)
+            # คำสั่ง: python tools/taicho_pdf.py pdf --date {mmdd} แล้ว python tools/taicho_qa.py <ไฟล์>
+            print(f"PDF note: สร้าง PDF {mmdd} ที่เครื่อง (taicho_pdf.py HTML+Edge + taicho_qa.py)", flush=True)
             send_line("宜しくお願い致します。")
             state["processed"].append(nm)
             save_state(state, token)
@@ -723,8 +661,8 @@ def run_flow():
 
 @https_fn.on_request(region=SupportedRegion.ASIA_SOUTHEAST1)
 def taicho_monitor(req: https_fn.Request) -> https_fn.Response:
-    """HTTP entry. body/query {pdf: 1, mmdd?: MMDD} = สร้าง/อัปเดต PDF archive เท่านั้น
-    (ไม่แตะ sheets/LINE/state — ใช้ตรวจสอบหรือสร้าง PDF ใหม่ด้วยมือ)"""
+    """HTTP entry. 7 ก.ย. 69: PDF hook ถอดออก (reportlab reject — PDF = ที่เครื่อง HTML+Edge)
+    body/query {pdf: 1} = ตอบวิธีสร้าง PDF ที่เครื่อง (taicho_pdf.py + taicho_qa.py)"""
     try:
         body = {}
         if req.method == "POST":
@@ -733,10 +671,10 @@ def taicho_monitor(req: https_fn.Request) -> https_fn.Response:
                 body = json.loads(raw)
         body.update({k: v for k, v in (req.args.items() if req.args else [])})
         if body.get("pdf") == "1":
-            token = sheets_token()
-            mmdd = str(body.get("mmdd") or _dt.date.today().strftime("%m%d"))
-            archive_pdf(mmdd, token)
-            return https_fn.Response(f"PDF archived {mmdd}", status=200)
+            return https_fn.Response(
+                "PDF สร้างที่เครื่องเท่านั้น (HTML+Edge — reportlab reject 7 ก.ย.): "
+                "python tools/taicho_pdf.py pdf --date <MMDD> แล้ว python tools/taicho_qa.py <ไฟล์.pdf>",
+                status=200)
         msg = run_flow()
         return https_fn.Response(f"OK {msg}", status=200)
     except Exception as e:
