@@ -26,13 +26,15 @@ Thumbs.db
 tools/taicho_auto_state.json
 tools/taicho_auto.log
 tools/.taicho_auto.lock
+tools/taicho_pdf_auto_state.json
+tools/taicho_pdf_auto.log
 
 # Python
 __pycache__/
 *.pyc
 
-
-cloud-functions/**/.envcloud-functions/**/venv/cloud-functions/**/__pycache__/cloud-functions/**/.venv/
+# jammed duplicate pattern บรรทัด 35 เดิม (ครอบคลุมด้วย 37-39 แล้ว) — ลบทิ้ง 8 ก.ย. 69
+# cloud-functions/**/.envcloud-functions/**/venv/cloud-functions/**/__pycache__/cloud-functions/**/.venv/
 
 cloud-functions/**/.env
 cloud-functions/**/venv/
