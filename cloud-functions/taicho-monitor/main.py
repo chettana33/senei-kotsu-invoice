@@ -597,6 +597,66 @@ def rotate_table_if_needed():
 
 # ---------------- orchestrator ----------------
 
+def _select_new_forms(procd, pmt, forms, bootstrapped, now=None):
+    """คัดใบที่ต้องประมวลผลจาก state + ใบใน Drive (pure logic — test ได้, 9 ก.ย. 69 v2)
+    แก้ procd/pmt ในที่ คืน (new_forms, bootstrapped). state processed = ชื่อล้วน (legacy) หรือ
+    'name|file_id|modifiedTime' (v2). กัน: ชื่อซ้ำ千栄ส่งซ้ำ · แก้เนื้อหาไฟล์เดิม · legacy ครอบชื่อ"""
+    def _key(nm, fid, mt):
+        return f"{nm}|{fid}|{mt}"
+
+    fresh_cutoff = ((now or _dt.datetime.now(_dt.timezone.utc)) - _dt.timedelta(days=1)).isoformat()
+    by_name = {}
+    for _, fid, nm, mt in forms:
+        by_name.setdefault(nm, []).append((fid, mt))
+    # (a) legacy (ชื่อล้วน): ชื่อซ้ำ 2 ไฟล์ หรือไฟล์เดียวถูกแก้ (mtime ใหม่พอ) = ปลด legacy
+    plain_set = {p for p in procd if "|" not in p}
+    for nm, flist in list(by_name.items()):
+        if nm not in plain_set:
+            continue
+        maxmt = max(mt for _, mt in flist)
+        if len(flist) > 1:
+            if maxmt < fresh_cutoff:
+                continue  # ชื่อซ้ำของไฟล์เก่า = ไม่แตะ (กัน rebuild ใบเก่าทับข้อมูลใหม่)
+            procd.remove(nm)
+            print(f"dup-name {nm} ({len(flist)} files) -> retire legacy, newest wins", flush=True)
+            continue
+        fid, mt = flist[0]
+        old = pmt.get(nm)
+        if old is None:
+            pmt[nm] = mt or ""
+            print(f"proc_mt init {nm} = {mt}", flush=True)
+        elif mt and mt > old and mt >= fresh_cutoff:
+            procd.remove(nm)
+            print(f"re-add {nm} (updated {old} -> {mt})", flush=True)
+    # (d) bootstrap ก่อนคัด (เฉพาะ state ใหม่จริง — flag กัน re-add โล่งแล้วเข้า bootstrap ผิดรอบ)
+    if not bootstrapped:
+        bootstrapped = True
+        if not procd and forms:
+            newest = forms[-1][2]
+            for _, fid, nm, mt in forms:
+                if nm != newest:
+                    procd.append(_key(nm, fid, mt))
+                    pmt[nm] = mt
+            print(f"bootstrap: marked {len(procd)} old forms", flush=True)
+    # (b) ใหม่ = key ยังไม่เคยบันทึก และชื่อไม่ถูก legacy ครอบ
+    plain_set = {p for p in procd if "|" not in p}
+    keyed_set = {p for p in procd if "|" in p}
+    cands = []
+    for mmdd, fid, nm, mt in forms:
+        if nm in plain_set:
+            continue
+        if _key(nm, fid, mt) in keyed_set:
+            continue
+        cands.append((mmdd, fid, nm, mt))
+    # (c) ชื่อซ้ำ/หลายเวอร์ชัน: เอาเฉพาะ mtime สูงสุด (กันของเก่าทับของใหม่)
+    best = {}
+    for mmdd, fid, nm, mt in cands:
+        if nm not in best or mt > best[nm][3]:
+            best[nm] = (mmdd, fid, nm, mt)
+    new_forms = [best[nm] for nm in sorted(best, key=lambda n: best[n][0])]
+    return new_forms, bootstrapped
+
+
 def run_flow():
     token = sheets_token()
     state = load_state(token)
@@ -607,28 +667,18 @@ def run_flow():
         print(f"rotate/clear failed: {e}", flush=True)
     forms = list_forms(token)
     procd = state.setdefault("processed", [])
-    # state เก่าเก็บแค่ชื่อ (เช็คชื่ออย่างเดียว) = ข้ามไฟล์ที่ 千栄 ส่งซ้ำ/แก้ชื่อเดิม — เพิ่ม proc_mt
-    # (name -> modifiedTime) กันข้ามของใหม่ (9 ก.ย. 69)
     if not isinstance(state.get("proc_mt"), dict):
         state["proc_mt"] = {}
     pmt = state["proc_mt"]
-    for _, _, nm, mt in forms:
-        old = pmt.get(nm)
-        if nm in procd and old is not None and mt and mt > old:
-            procd.remove(nm)
-            print(f"re-add {nm} (mtime {mt} > {old})", flush=True)
-        elif nm in procd and old is None:
-            # entry ชื่อล้วนจาก state เก่า — จด mtime รอบแรก กันรอบหน้าข้ามของใหม่
-            pmt[nm] = mt or ""
-            print(f"proc_mt init {nm} = {mt}", flush=True)
-    if not procd and forms:
-        newest = forms[-1][2]
-        for _, _, nm, mt in forms:
-            if nm != newest:
-                procd.append(nm)
-                pmt[nm] = mt
-        print(f"bootstrap: marked {len(procd)} old forms", flush=True)
-    new_forms = [(mmdd, fid, nm, mt) for mmdd, fid, nm, mt in forms if nm not in procd]
+    new_forms, state["bootstrapped"] = _select_new_forms(
+        procd, pmt, forms, state.get("bootstrapped", False))
+
+    def _mark(nm, fid, mt):
+        k = f"{nm}|{fid}|{mt}"
+        if k not in procd:
+            procd.append(k)
+        pmt[nm] = mt or ""
+
     if not new_forms:
         print("No new form. done.", flush=True)
         save_state(state, token)
@@ -642,8 +692,7 @@ def run_flow():
                 print("no change:", nm, flush=True)
                 send_line(f"{msg}\n{SHORT_TAICHO_URL}")
                 send_line("宜しくお願い致します。")
-                procd.append(nm)
-                pmt[nm] = mt
+                _mark(nm, fid, mt)
                 save_state(state, token)
                 continue
             apply_plan(plan, dry_run=False)
@@ -663,8 +712,7 @@ def run_flow():
             # คำสั่ง: python tools/taicho_pdf.py pdf --date {mmdd} แล้ว python tools/taicho_qa.py <ไฟล์>
             print(f"PDF note: สร้าง PDF {mmdd} ที่เครื่อง (taicho_pdf.py HTML+Edge + taicho_qa.py)", flush=True)
             send_line("宜しくお願い致します。")
-            procd.append(nm)
-            pmt[nm] = mt
+            _mark(nm, fid, mt)
             save_state(state, token)
         except Exception as e:
             print(f"failed {nm}: {e}", flush=True)
