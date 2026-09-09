@@ -52,6 +52,13 @@ def find_python_exe():
 
 
 def main():
+    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะ จ-ศ 16:00-19:40 (ใบ 千栄 มา 16-19 + เผื่อสาย)
+    # นอก window/วันหยุด = ออกเงียบ กันอ่าน master นอกเวลา (429) — 9 ก.ย. 69
+    now_t = dt.datetime.now().time()
+    if dt.datetime.now().weekday() >= 5:  # เสาร์-อาทิตย์
+        return 0
+    if not (dt.time(16, 0) <= now_t <= dt.time(19, 40)):
+        return 0
     baseline = load_baseline()
     if baseline <= 0:  # รอบแรก = ตั้ง baseline ตอนนี้ (ไม่ rebuild ใบเก่า)
         baseline = dt.datetime.now().timestamp()
