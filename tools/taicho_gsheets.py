@@ -295,9 +295,12 @@ def write_cell_rich(entry_row, day, text, runs):
 
 
 def read_request_form(path):
-    """อ่านใบขอรถ: คืน dict {date: [entry]} entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)"""
+    """อ่านใบขอรถ: คืน dict {date: [entry]} entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)
+    วันที่ใบระบุ キャンセル (col J) ทั้งหมด = ยกเลิก -> ฝาก {date: []} ให้ build_plan ลบจาก master
+    (ตรงกับ cloud parse_form_bytes — แก้ 9 ก.ย. 69: cancel-only day ไม่เคยลบ)"""
     wb = openpyxl.load_workbook(path, data_only=True)
     out = {}
+    cancelled_only = set()
     for tab, month in TAB_MONTHS.items():
         if tab not in wb.sheetnames:
             continue
@@ -309,6 +312,7 @@ def read_request_form(path):
                 continue
             j = ws.cell(row=r, column=10).value  # J = 連絡先/สถานะ
             if j and "キャンセル" in str(j):
+                cancelled_only.add(d)  # จดไว้ — หลัง loop ฝากวันว่างให้ build_plan ลบ
                 continue  # งานยกเลิก ไม่ลง台帳
             c = fmt_time(ws.cell(row=r, column=3).value)
             if c is None:
@@ -319,6 +323,8 @@ def read_request_form(path):
             D = str(ws.cell(row=r, column=4).value or "").strip()  # 配車場所
             G = str(ws.cell(row=r, column=7).value or "").strip()  # 行先
             out.setdefault(d, []).append({"t": c, "h": h, "D": D, "G": G})
+    for d in cancelled_only:
+        out.setdefault(d, [])  # วันที่มีแต่ cancel -> ว่าง (plan: ลบ)
     for d in out:
         # เก็บเวลาซ้ำ (รถ 2 คันเวลาเดียวกัน) — set() ตัดซ้ำ ผิด (29 ส.ค. 69)
         out[d] = sorted(out[d], key=lambda e: (e["t"][:2], e["t"][3:]))

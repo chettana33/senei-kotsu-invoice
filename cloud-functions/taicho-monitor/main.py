@@ -368,9 +368,12 @@ def cell_canon(text):
 
 
 def parse_form_bytes(data):
-    """อ่านใบขอรถ -> {date: [entry]} โดย entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)"""
+    """อ่านใบขอรถ -> {date: [entry]} โดย entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)
+    วันที่ใบระบุ キャンセล (col J) ทั้งหมด = คิวถูกยกเลิก -> ฝาก {date: []} ให้ build_plan เห็น
+    แล้วลบจาก master (บั๊ก 9 ก.ย. 69: 10/8 cancel-only day ไม่เคยลบ)"""
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
     out = {}
+    cancelled_only = set()
     for tab, month in TAB_MONTHS.items():
         if tab not in wb.sheetnames:
             continue
@@ -382,6 +385,7 @@ def parse_form_bytes(data):
                 continue
             j = ws.cell(row=r, column=10).value
             if j and "キャンセル" in str(j):
+                cancelled_only.add(d)  # จดไว้ — หลัง loop ฝากวันว่างให้ build_plan ลบ
                 continue
             c = fmt_time(ws.cell(row=r, column=3).value)
             if c is None:
@@ -392,6 +396,8 @@ def parse_form_bytes(data):
             D = str(ws.cell(row=r, column=4).value or "").strip()
             G = str(ws.cell(row=r, column=7).value or "").strip()
             out.setdefault(d, []).append({"t": c, "h": h, "D": D, "G": G})
+    for d in cancelled_only:
+        out.setdefault(d, [])  # วันที่มีแต่ cancel -> ว่าง (plan: ลบ)
     def _tk(e):
         return tuple(re.match(r"(\d{2}):(\d{2})", e["t"]).groups())
     return {d: sorted(v, key=_tk) for d, v in out.items()}
