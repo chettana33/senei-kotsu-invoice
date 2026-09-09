@@ -94,8 +94,13 @@ def main():
                 continue
             day = int(mmdd[2:])
             if day not in cells:
-                log(f"SKIP {mmdd}: ยังไม่ apply ลง master (ไม่มี cell {mm}月{day:02d}) — รอรอบหน้า")
-                continue
+                if is_today:
+                    # ใบวันนี้: 千栄 อาจยังไม่ลงรายการวันที่ตัวเอง (เช่น 9/9/69) แต่ master เปลี่ยน
+                    # จากรายการวันอื่นในใบแล้ว → สร้าง PDF snapshot รายวันได้ (9 ก.ย. 69)
+                    log(f"BUILD {mmdd} (snapshot ใบวันนี้ — ใบไม่มี cell {mm}月{day:02d})")
+                else:
+                    log(f"SKIP {mmdd}: ยังไม่ apply ลง master (ไม่มี cell {mm}月{day:02d}) — รอรอบหน้า")
+                    continue
             log(f"BUILD {mmdd}: ใบ {fn} -> {pdf_name}")
             try:
                 tg.export_pdf(pdf_name, month_dir)  # HTML+Edge primary (taicho_pdf.build_pdf)

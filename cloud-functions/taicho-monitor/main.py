@@ -184,7 +184,8 @@ def _drive_find_file(name, parent, token):
 
 
 def list_forms(token):
-    """คืน [(mmdd, file_id, name)] เรียง mmdd จากทุก folder เดือนที่เกี่ยวข้อง"""
+    """คืน [(mmdd, file_id, name, modifiedTime)] เรียง mmdd จากทุก folder เดือนที่เกี่ยวข้อง
+    (9 ก.ย. 69: เพิ่ม modifiedTime — ใช้กันข้ามไฟล์ชื่อซ้ำที่ 千栄 ส่งซ้ำ)"""
     found = []
     for year, months in ((2026, [8, 9, 10, 11, 12]), (2027, [1, 2, 3])):
         for mm in months:
@@ -193,11 +194,11 @@ def list_forms(token):
             except Exception:
                 continue
             q = f"'{folder}' in parents and trashed=false"
-            r = _api("GET", f"{DRIVE_API}/files?q={urllib.parse.quote(q)}&fields=files(id,name)", token)
+            r = _api("GET", f"{DRIVE_API}/files?q={urllib.parse.quote(q)}&fields=files(id,name,modifiedTime)", token)
             for f in r.get("files") or []:
                 m = FORM_RE.match(f["name"])
                 if m:
-                    found.append((m.group(1), f["id"], f["name"]))
+                    found.append((m.group(1), f["id"], f["name"], f.get("modifiedTime", "")))
     return sorted(found, key=lambda t: t[0])
 
 
@@ -605,20 +606,34 @@ def run_flow():
     except Exception as e:
         print(f"rotate/clear failed: {e}", flush=True)
     forms = list_forms(token)
-    if state.get("processed") is None:
-        state["processed"] = []
-    if not state["processed"] and forms:
+    procd = state.setdefault("processed", [])
+    # state เก่าเก็บแค่ชื่อ (เช็คชื่ออย่างเดียว) = ข้ามไฟล์ที่ 千栄 ส่งซ้ำ/แก้ชื่อเดิม — เพิ่ม proc_mt
+    # (name -> modifiedTime) กันข้ามของใหม่ (9 ก.ย. 69)
+    if not isinstance(state.get("proc_mt"), dict):
+        state["proc_mt"] = {}
+    pmt = state["proc_mt"]
+    for _, _, nm, mt in forms:
+        old = pmt.get(nm)
+        if nm in procd and old is not None and mt and mt > old:
+            procd.remove(nm)
+            print(f"re-add {nm} (mtime {mt} > {old})", flush=True)
+        elif nm in procd and old is None:
+            # entry ชื่อล้วนจาก state เก่า — จด mtime รอบแรก กันรอบหน้าข้ามของใหม่
+            pmt[nm] = mt or ""
+            print(f"proc_mt init {nm} = {mt}", flush=True)
+    if not procd and forms:
         newest = forms[-1][2]
-        for _, _, nm in forms:
+        for _, _, nm, mt in forms:
             if nm != newest:
-                state["processed"].append(nm)
-        print(f"bootstrap: marked {len(state['processed'])} old forms", flush=True)
-    new_forms = [(mmdd, fid, nm) for mmdd, fid, nm in forms if nm not in state["processed"]]
+                procd.append(nm)
+                pmt[nm] = mt
+        print(f"bootstrap: marked {len(procd)} old forms", flush=True)
+    new_forms = [(mmdd, fid, nm, mt) for mmdd, fid, nm, mt in forms if nm not in procd]
     if not new_forms:
         print("No new form. done.", flush=True)
         save_state(state, token)
         return "no new form"
-    for mmdd, fid, nm in new_forms:
+    for mmdd, fid, nm, mt in new_forms:
         try:
             data = _get_media(f"{DRIVE_API}/files/{fid}?alt=media", token)
             plan = build_plan(parse_form_bytes(data))
@@ -627,7 +642,8 @@ def run_flow():
                 print("no change:", nm, flush=True)
                 send_line(f"{msg}\n{SHORT_TAICHO_URL}")
                 send_line("宜しくお願い致します。")
-                state["processed"].append(nm)
+                procd.append(nm)
+                pmt[nm] = mt
                 save_state(state, token)
                 continue
             apply_plan(plan, dry_run=False)
@@ -647,7 +663,8 @@ def run_flow():
             # คำสั่ง: python tools/taicho_pdf.py pdf --date {mmdd} แล้ว python tools/taicho_qa.py <ไฟล์>
             print(f"PDF note: สร้าง PDF {mmdd} ที่เครื่อง (taicho_pdf.py HTML+Edge + taicho_qa.py)", flush=True)
             send_line("宜しくお願い致します。")
-            state["processed"].append(nm)
+            procd.append(nm)
+            pmt[nm] = mt
             save_state(state, token)
         except Exception as e:
             print(f"failed {nm}: {e}", flush=True)
