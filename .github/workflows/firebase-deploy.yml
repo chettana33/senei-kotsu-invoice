@@ -80,12 +80,16 @@ jobs:
             test -s "$dir/.env" || { echo "FAIL: .env ของ $cb ว่าง"; exit 1; }
           done
 
-      - name: Authenticate (WIF -> SA, keyless)
+      - id: gcp_auth
+        name: Authenticate (WIF -> SA, keyless)
         uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.SA_EMAIL }}
 
+      # firebase CLI ยังไม่ใช้ ADC ตรง -> ส่ง access token จาก SA impersonation (keyless, 9 ก.ย. 69)
+      - name: Export FIREBASE_TOKEN (SA impersonation)
+        run: echo "FIREBASE_TOKEN=${{ steps.gcp_auth.outputs.access_token }}" >> "$GITHUB_ENV"
       - name: Deploy functions (ต่อ codebase)
         env:
           INPUT_CB: ${{ github.event.inputs.codebase }}
