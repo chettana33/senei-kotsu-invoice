@@ -465,9 +465,17 @@ def run(dry_run=False):
         return
     for mmdd, path in new_forms:
         try:
-            plan = tg.build_plan(tg.read_request_form(path))
+            skipped = []
+            plan = tg.build_plan(tg.read_request_form(path), skipped=skipped)
+            if skipped:
+                # print ของ build_plan ไม่เข้า log (logging handler เท่านั้น) — ต้อง log.warning เอง
+                log.warning("SKIPPED days (手入力行あり — ไม่เขียนทับ): %s", skipped)
             if not plan:
                 msg = f"✅ 台帳を確認しました（{mmdd}）: 変更なし"
+                if skipped:
+                    msg = (f"⚠️ 台帳を確認しました（{mmdd}）: 変更なし（未更新 {len(skipped)} 日 — 手入力行あり）\n"
+                           + "\n".join(f"  - {m}月{d}日: {f!r}" for m, d, f in skipped[:5])
+                           + "\n要確認（システムは上書きしません）")
                 log.info("no change for %s", path)
                 if not dry_run:
                     # ส่งลิงก์台帳ด้วย (lessons #62: quickReply หายข้ามวัน — ต้องมี plain text URL + ปุ่มเปิด台帳)
@@ -495,6 +503,8 @@ def run(dry_run=False):
                     disp = target
                     lines.append(f"  - {month}月{day}日 [{JA_REASON.get(reason, reason)}]: {disp!r}")
                     total += 1
+            for m, d, f in skipped:  # วันที่มีบรรทัดที่ระบบสร้างไม่ได้ = ข้ามจริง ต้องบอกให้พี่เจตรวจ
+                lines.append(f"  - {m}月{d}日 [⚠️未更新]: 手入力行あり {f!r} — 要確認")
             msg = (f"📋 台帳を自動更新しました（{mmdd}、{total}箇所）:\n"
                    + "\n".join(lines))
             send_line(msg)

@@ -362,14 +362,20 @@ def _flag_of(line):
     return ""
 
 
+D2_RE = re.compile(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}(?:\s+\d+H)?(?:\s+[ホ空])?$")
+
+
 def _foreign_lines(text):
-    """บรรทัดที่ระบบสร้างไม่ได้เอง (🔷 / ไม่ใช่รูปแบบ D2 อย่าง 'ホ 06:00 空') — ห้ามเขียนทับเงียบ ๆ
-    (กันข้อมูลมือ/ของเก่าหาย: gate ใหม่เทียบข้อความเต็ม ถ้าไม่กันไว้ = เขียนทับแล้วบรรทัดนั้นหาย)"""
+    """บรรทัดที่ระบบสร้างไม่ได้เอง — 🔷 หรือไม่ตรงรูปแบบ D2 **ทั้งบรรทัด** (เช่น 'ホ 06:00 空 迎車',
+    '運転手: 佐藤', 'ホテル 06:00 空') — ห้ามเขียนทับเงียบ ๆ
+    (gate เทียบข้อความเต็ม: ถ้าไม่กันไว้ = เขียนทับแล้วบรรทัดนั้นหาย; ตรวจทั้งบรรทัดเพื่อไม่ให้ข้อความ
+    ต่อท้ายบรรทัดที่ถูกต้องหลุด — review 10 ก.ย. 69)"""
     out = []
     for ln in (text or "").split("\n"):
-        s = ln.strip()
-        if s and ("🔷" in s or not re.match(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}", s)):
-            out.append(s)
+        raw = ln.strip()
+        s = strip_flags(ln).strip()
+        if s and ("🔷" in s or not D2_RE.match(s)):
+            out.append(raw)
     return out
 
 
@@ -412,8 +418,12 @@ def plan_cell_text(cur_str, entries):
     return "\n".join(out)
 
 
-def build_plan(form_rows):
-    """คืน dict {month: {day: (target_text, reason, cur)}} — diff แบบ D2-aware (เวลา+ชั่วโมง)"""
+def build_plan(form_rows, skipped=None):
+    """คืน dict {month: {day: (target_text, reason, cur)}} — diff แบบ D2-aware (เวลา+ชั่วโมง)
+
+    `skipped` = list ที่จะถูกเติม (month, day, foreign_lines) ของวันที่ถูกข้าม เพราะเซลล์มีบรรทัด
+    ที่ระบบสร้างไม่ได้ — caller ต้องรายงานให้พี่เจเห็น (ห้ามเงียบ: วันนั้นจะค้างไม่ถูกอัปเดต)
+    """
     taicho = read_taicho()
     plan = {}
     for d, entries in sorted(form_rows.items()):
@@ -426,6 +436,8 @@ def build_plan(form_rows):
         if foreign:
             print(f"  ⚠️ ข้าม {month}月{d.day:02d}: เซลล์มีบรรทัดที่ระบบสร้างไม่ได้ {foreign!r} "
                   f"— ให้คนตรวจก่อน (ห้ามเขียนทับให้ข้อมูลหาย)")
+            if skipped is not None:
+                skipped.append((month, d.day, foreign))
             continue
         target_text = plan_cell_text(cur_str, entries)  # flag 🟢/🟡 ต่อบรรทัด (แก้ 10 ก.ย. 69)
         # gate เทียบข้อความ (เดิมเทียบแค่ เวลา+ชั่วโมง → ทิศทาง 空↔ホ เปลี่ยนแล้วไม่ถูกเขียน)
@@ -701,11 +713,22 @@ def cmd_status(args):
             print(f"  {month}月{day:02d}: {info['cells'][day]!r}")
 
 
+def _report_skipped(skipped):
+    """เตือนวันที่ถูกข้าม (เซลล์มีบรรทัดที่ระบบสร้างไม่ได้) — ห้ามเงียบ วันนั้นจะค้างไม่ถูกอัปเดต"""
+    if not skipped:
+        return
+    print(f"⚠️ ข้าม {len(skipped)} วัน (ต้องตรวจมือ — ระบบไม่เขียนทับ):")
+    for month, day, foreign in skipped:
+        print(f"    {month}月{day:02d}: {foreign!r}")
+
+
 def cmd_diff(args):
     form = read_request_form(args.form)
-    plan = build_plan(form)
+    skipped = []
+    plan = build_plan(form, skipped=skipped)
+    _report_skipped(skipped)
     if not plan:
-        print("ไม่มีความต่าง — 台帳ตรงกับใบขอรถแล้ว")
+        print("ไม่มีความต่าง — 台帳ตรงกับใบขอรถแล้ว" + (" (แต่มีวันที่ถูกข้าม — ดูข้างบน)" if skipped else ""))
         return
     for month, days in sorted(plan.items()):
         print(f"--- {month}月 ---")
@@ -718,7 +741,9 @@ def cmd_diff(args):
 
 def cmd_apply(args):
     form = read_request_form(args.form)
-    plan = build_plan(form)
+    skipped = []
+    plan = build_plan(form, skipped=skipped)
+    _report_skipped(skipped)
     if not plan:
         print("ไม่มีความต่าง — ไม่ต้องเขียน")
         return

@@ -443,14 +443,20 @@ def _flag_of(line):
     return ""
 
 
+D2_RE = re.compile(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}(?:\s+\d+H)?(?:\s+[ホ空])?$")
+
+
 def _foreign_lines(text):
-    """บรรทัดที่ระบบสร้างไม่ได้เอง (🔷 / ไม่ใช่รูปแบบ D2 อย่าง 'ホ 06:00 空') — ห้ามเขียนทับเงียบ ๆ
-    (กันข้อมูลมือ/ของเก่าหาย: gate ใหม่เทียบข้อความเต็ม ถ้าไม่กันไว้ = เขียนทับแล้วบรรทัดนั้นหาย)"""
+    """บรรทัดที่ระบบสร้างไม่ได้เอง — 🔷 หรือไม่ตรงรูปแบบ D2 **ทั้งบรรทัด** (เช่น 'ホ 06:00 空 迎車',
+    '運転手: 佐藤', 'ホテル 06:00 空') — ห้ามเขียนทับเงียบ ๆ
+    (gate เทียบข้อความเต็ม: ถ้าไม่กันไว้ = เขียนทับแล้วบรรทัดนั้นหาย; ตรวจทั้งบรรทัดเพื่อไม่ให้ข้อความ
+    ต่อท้ายบรรทัดที่ถูกต้องหลุด — review 10 ก.ย. 69)"""
     out = []
     for ln in (text or "").split("\n"):
-        s = ln.strip()
-        if s and ("🔷" in s or not re.match(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}", s)):
-            out.append(s)
+        raw = ln.strip()
+        s = strip_flags(ln).strip()
+        if s and ("🔷" in s or not D2_RE.match(s)):
+            out.append(raw)
     return out
 
 
@@ -493,9 +499,13 @@ def plan_cell_text(cur_str, entries):
     return "\n".join(out)
 
 
-def build_plan(form_rows):
+def build_plan(form_rows, skipped=None):
     """diff D2-aware: เทียบ (เวลา+ชั่วโมง) เท่านั้น กัน 空/ホ/🔷 รบกวน.
-    plan[month][day] = (target_text, reason, cur) — target_text = บรรทัด D2 รวมของใบนี้"""
+    plan[month][day] = (target_text, reason, cur) — target_text = บรรทัด D2 รวมของใบนี้
+
+    `skipped` = list ที่จะถูกเติม (month, day, foreign_lines) ของวันที่ถูกข้าม เพราะเซลล์มีบรรทัด
+    ที่ระบบสร้างไม่ได้ — caller ต้องรายงานให้พี่เจเห็น (ห้ามเงียบ: วันนั้นจะค้างไม่ถูกอัปเดต)
+    """
     taicho = read_taicho()
     plan = {}
     for d, entries in sorted(form_rows.items()):
@@ -508,6 +518,8 @@ def build_plan(form_rows):
         if foreign:
             print(f"  ⚠️ ข้าม {month}月{d.day:02d}: เซลล์มีบรรทัดที่ระบบสร้างไม่ได้ {foreign!r} "
                   f"— ให้คนตรวจก่อน (ห้ามเขียนทับให้ข้อมูลหาย)", flush=True)
+            if skipped is not None:
+                skipped.append((month, d.day, foreign))
             continue
         target_text = plan_cell_text(cur_str, entries)  # flag 🟢/🟡 ต่อบรรทัด (แก้ 10 ก.ย. 69)
         # gate เทียบข้อความ (เดิมเทียบแค่ เวลา+ชั่วโมง → ทิศทาง 空↔ホ เปลี่ยนแล้วไม่ถูกเขียน)
@@ -795,9 +807,16 @@ def run_flow():
     for mmdd, fid, nm, mt in new_forms:
         try:
             data = _get_media(f"{DRIVE_API}/files/{fid}?alt=media", token)
-            plan = build_plan(parse_form_bytes(data))
+            skipped = []
+            plan = build_plan(parse_form_bytes(data), skipped=skipped)
             if not plan:
                 msg = f"✅ 台帳を確認しました（{mmdd}）: 変更なし"
+                if skipped:
+                    # ห้ามเงียบ: วันที่มีบรรทัดที่ระบบสร้างไม่ได้ = ไม่ถูกอัปเดต ต้องบอกพี่เจ
+                    msg = (f"⚠️ 台帳を確認しました（{mmdd}）: 変更なし（未更新 {len(skipped)} 日 — 手入力行あり）\n"
+                           + "\n".join(f"  - {m}月{d}日: {f!r}" for m, d, f in skipped[:5])
+                           + "\n要確認（システムは上書きしません）")
+                    print(f"SKIPPED days: {skipped!r}", flush=True)
                 print("no change:", nm, flush=True)
                 send_line(f"{msg}\n{SHORT_TAICHO_URL}")
                 send_line("宜しくお願い致します。")
@@ -816,6 +835,8 @@ def run_flow():
                     disp = target
                     lines.append(f"  - {month}月{day}日 [{JA_REASON.get(reason, reason)}]: {disp!r}")
                     total += 1
+            for m, d, f in skipped:  # วันที่มีบรรทัดที่ระบบสร้างไม่ได้ = ข้ามจริง ต้องบอกให้พี่เจตรวจ
+                lines.append(f"  - {m}月{d}日 [⚠️未更新]: 手入力行あり {f!r} — 要確認")
             msg = (f"📋 台帳を自動更新しました（{mmdd}、{total}箇所）:\n" + "\n".join(lines))
             send_line(msg)
             send_line(f"📄 台帳を開く（{mmdd}）\n{SHORT_TAICHO_URL}")
