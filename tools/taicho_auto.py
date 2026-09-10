@@ -484,15 +484,15 @@ def run(dry_run=False):
                 continue
             tg.apply_plan(plan, dry_run=False)
             # label ไทย -> ญี่ปุ่น+emoji (ตรง legend 台帳: 変更🟡/新規🟢/削除) — พี่เจสั่ง 2 ก.ย. 69
-            JA_REASON = {"ลงใหม่": "新規🟢", "แก้ไข": "変更🟡",
+            JA_REASON = {"ลงใหม่": "新規🟢", "แก้ไข": "変更🟡", "แก้ไข+ลบ": "変更🟡＋削除",
                          "ลบ (งานยกเลิก/ไม่มีแล้ว)": "削除"}
             lines = []
             total = 0
             for month in sorted(plan):
                 for day in sorted(plan[month]):
                     target, reason, cur = plan[month][day]
-                    # ค่าใน cell จริง = target + 🟢 (apply_plan เติม flag ให้งานวันนี้) — แสดงให้ตรง
-                    disp = (target + "🟢") if target else target
+                    # target = ข้อความที่เขียนลง cell จริง (flag 🟢/🟡 ติดต่อบรรทัดแล้ว) — ห้ามเติม flag ซ้ำ
+                    disp = target
                     lines.append(f"  - {month}月{day}日 [{JA_REASON.get(reason, reason)}]: {disp!r}")
                     total += 1
             msg = (f"📋 台帳を自動更新しました（{mmdd}、{total}箇所）:\n"

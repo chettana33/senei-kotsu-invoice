@@ -435,6 +435,14 @@ def _line_plain(line):
     return re.sub(r"\s+", " ", s).strip()
 
 
+def _flag_of(line):
+    """flag ที่บรรทัดนี้ติดอยู่ ('' = ไม่ติด)"""
+    for f in ("🟢", "🟡"):
+        if f in (line or ""):
+            return f
+    return ""
+
+
 def plan_cell_text(cur_str, entries):
     """ข้อความเซลล์ + flag **ต่อบรรทัด**: 🟢 = เที่ยวใหม่ (ไม่มีในเซลล์เดิม) ·
     🟡 = เที่ยวเดิม (เวลา+ชั่วโมงตรง) แต่เนื้อเปลี่ยน · ไม่ติด = เท่าเดิม
@@ -442,25 +450,28 @@ def plan_cell_text(cur_str, entries):
     แก้ 10 ก.ย. 69 (พี่เจแจ้ง): เดิมต่อ " 🟢" ท้ายเซลล์เสมอ → ไปติดบรรทัดสุดท้ายที่ไม่ได้เปลี่ยน
     (เคสจริง 10月26: ลบ 18:30 ออก แต่ 🟢 ไปติด 06:00 = ผิด). ลบเที่ยว = ไม่มี flag (削除 แจ้งทาง LINE)
     """
-    raw_lines = [ln for ln in (cur_str or "").split("\n") if ln.strip()]  # เก็บ flag เดิมไว้ตรวจ
-    cur_lines = [strip_flags(ln) for ln in raw_lines]
-    pool = Counter(k for k in (line_time(ln) for ln in cur_lines) if k)
+    bucket = {}  # เวลา -> [บรรทัดเดิมที่ยังไม่ถูกจับคู่] (คงลำดับในเซลล์)
+    for old in (cur_str or "").split("\n"):
+        if old.strip():
+            bucket.setdefault(line_time(old), []).append(old.strip())
     out = []
     for e in entries:
         ln = d2_text(e)
         key = line_time(ln)
+        cand = bucket.get(key) or []
         flag = ""
-        if key and pool.get(key, 0) > 0:
-            pool[key] -= 1
-            olds = [o for o in raw_lines if line_time(o) == key]
-            # เที่ยวนี้ติด flag ของวันนี้อยู่แล้ว = คง flag เดิม (เขียนซ้ำวันเดียวกันไม่ลบเครื่องหมาย)
-            held = next((f for f in ("🟢", "🟡") if any(f in o for o in olds)), "")
-            if held:
-                flag = held
-            elif all(_line_plain(o) != _line_plain(ln) for o in olds):
-                flag = "🟡"
+        if cand:
+            # 1) เที่ยวเดิมไม่เปลี่ยน (เนื้อเท่ากัน — ต่างแค่ flag) → คง flag เดิมของบรรทัดนั้น
+            #    จับคู่ "ตรงบรรทัด" ไม่ใช่ตามเวลาเฉยๆ (กัน 🟢 ของรถอีกคันเวลาเดียวกันลามมาที่บรรทัดนี้)
+            hit = next((o for o in cand if _line_plain(o) == _line_plain(ln)), None)
+            if hit is not None:
+                cand.remove(hit)
+                flag = _flag_of(hit)
+            else:
+                # 2) ช่องเวลาเดิมแต่เนื้อเปลี่ยน → คง flag เดิมถ้ามี ไม่งั้น 🟡 (変更)
+                flag = _flag_of(cand.pop(0)) or "🟡"
         else:
-            flag = "🟢"
+            flag = "🟢"  # ช่องเวลาใหม่ = 新規
         out.append(f"{ln} {flag}" if flag else ln)
     return "\n".join(out)
 
@@ -477,9 +488,19 @@ def build_plan(form_rows):
         current = taicho[month]["cells"].get(d.day)
         cur_str = str(current) if current is not None else None
         target_text = plan_cell_text(cur_str, entries)  # flag 🟢/🟡 ต่อบรรทัด (แก้ 10 ก.ย. 69)
-        if cell_canon(cur_str) != cell_canon(target_text):
-            reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)" if not entries else (
-                "ลงใหม่" if cur_str is None else "แก้ไข")
+        # gate เทียบข้อความเต็ม (เดิมเทียบแค่ เวลา+ชั่วโมง → ทิศทาง 空↔ホ เปลี่ยนแล้วไม่ถูกเขียน)
+        if cur_str != target_text:
+            cur_t = Counter(k for k in (line_time(ln) for ln in (cur_str or "").split("\n")) if k)
+            new_t = Counter(k for k in (line_time(ln) for ln in target_text.split("\n")) if k)
+            dropped = sum((cur_t - new_t).values())
+            if not entries:
+                reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)"
+            elif cur_str is None:
+                reason = "ลงใหม่"
+            elif dropped:
+                reason = "แก้ไข+ลบ"  # ลบบางเที่ยว + ยังมีเที่ยวอื่นในวันเดียวกัน
+            else:
+                reason = "แก้ไข"
             plan.setdefault(month, {})[d.day] = (target_text, reason, cur_str)
     return plan
 
@@ -761,13 +782,15 @@ def run_flow():
                 save_state(state, token)
                 continue
             apply_plan(plan, dry_run=False)
-            JA_REASON = {"ลงใหม่": "新規🟢", "แก้ไข": "変更🟡", "ลบ (งานยกเลิก/ไม่มีแล้ว)": "削除"}
+            JA_REASON = {"ลงใหม่": "新規🟢", "แก้ไข": "変更🟡", "แก้ไข+ลบ": "変更🟡＋削除",
+                         "ลบ (งานยกเลิก/ไม่มีแล้ว)": "削除"}
             lines = []
             total = 0
             for month in sorted(plan):
                 for day in sorted(plan[month]):
                     target, reason, cur = plan[month][day]
-                    disp = (target + "🟢") if target else target
+                    # target = ข้อความที่เขียนลง cell จริง (flag 🟢/🟡 ติดต่อบรรทัดแล้ว) — ห้ามเติม flag ซ้ำ
+                    disp = target
                     lines.append(f"  - {month}月{day}日 [{JA_REASON.get(reason, reason)}]: {disp!r}")
                     total += 1
             msg = (f"📋 台帳を自動更新しました（{mmdd}、{total}箇所）:\n" + "\n".join(lines))
