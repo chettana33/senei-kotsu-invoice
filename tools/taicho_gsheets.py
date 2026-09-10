@@ -362,6 +362,23 @@ def _flag_of(line):
     return ""
 
 
+def _foreign_lines(text):
+    """บรรทัดที่ระบบสร้างไม่ได้เอง (🔷 / ไม่ใช่รูปแบบ D2 อย่าง 'ホ 06:00 空') — ห้ามเขียนทับเงียบ ๆ
+    (กันข้อมูลมือ/ของเก่าหาย: gate ใหม่เทียบข้อความเต็ม ถ้าไม่กันไว้ = เขียนทับแล้วบรรทัดนั้นหาย)"""
+    out = []
+    for ln in (text or "").split("\n"):
+        s = ln.strip()
+        if s and ("🔷" in s or not re.match(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}", s)):
+            out.append(s)
+    return out
+
+
+def norm_cell(text):
+    """ข้อความเซลล์แบบเทียบ: ตัดช่องว่างท้ายบรรทัด + บรรทัดว่าง (แต่ **ไม่ตัด flag**)
+    — ใช้เป็น condition เขียนจริง: จับ flag ที่ผิด/ทิศทาง 空↔ホ เปลี่ยน แต่ไม่เขียนทิ้งเพราะช่องว่างล้วน"""
+    return "\n".join(ln.rstrip() for ln in (text or "").split("\n") if ln.strip())
+
+
 def plan_cell_text(cur_str, entries):
     """ข้อความเซลล์ + flag **ต่อบรรทัด**: 🟢 = เที่ยวใหม่ (ไม่มีในเซลล์เดิม) ·
     🟡 = เที่ยวเดิม (เวลา+ชั่วโมงตรง) แต่เนื้อเปลี่ยน · ไม่ติด = เท่าเดิม
@@ -405,9 +422,15 @@ def build_plan(form_rows):
             continue  # เดือนนี้ยังไม่มี section ใน sheet — ข้าม
         current = taicho.get(month, {}).get("cells", {}).get(d.day)
         cur_str = str(current) if current is not None else None
+        foreign = _foreign_lines(cur_str)
+        if foreign:
+            print(f"  ⚠️ ข้าม {month}月{d.day:02d}: เซลล์มีบรรทัดที่ระบบสร้างไม่ได้ {foreign!r} "
+                  f"— ให้คนตรวจก่อน (ห้ามเขียนทับให้ข้อมูลหาย)")
+            continue
         target_text = plan_cell_text(cur_str, entries)  # flag 🟢/🟡 ต่อบรรทัด (แก้ 10 ก.ย. 69)
-        # gate เทียบข้อความเต็ม (เดิมเทียบแค่ เวลา+ชั่วโมง → ทิศทาง 空↔ホ เปลี่ยนแล้วไม่ถูกเขียน)
-        if cur_str != target_text:
+        # gate เทียบข้อความ (เดิมเทียบแค่ เวลา+ชั่วโมง → ทิศทาง 空↔ホ เปลี่ยนแล้วไม่ถูกเขียน)
+        # norm_cell = ไม่นับช่องว่างท้ายบรรทัด (กันเขียน/LINE ปลอมเพราะช่องว่างล้วน) แต่ยังนับ flag
+        if norm_cell(cur_str) != norm_cell(target_text):
             cur_t = Counter(k for k in (line_time(ln) for ln in (cur_str or "").split("\n")) if k)
             new_t = Counter(k for k in (line_time(ln) for ln in target_text.split("\n")) if k)
             dropped = sum((cur_t - new_t).values())
