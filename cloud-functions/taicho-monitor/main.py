@@ -17,6 +17,7 @@ import time
 import urllib.parse
 import urllib.request
 import datetime as _dt
+from collections import Counter
 from datetime import date
 
 from firebase_functions import https_fn
@@ -417,7 +418,51 @@ def parse_form_bytes(data):
 
 
 def strip_flags(s):
-    return re.sub(r"[🟡🟢]", "", s or "").rstrip("\r\n")
+    """ตัด flag 🟡/🟢 (+ ช่องว่างหน้า flag) และช่องว่างท้ายบรรทัด (ตรงกับ tools/taicho_gsheets.py)"""
+    lines = [re.sub(r"\s*[🟡🟢]", "", ln).rstrip() for ln in (s or "").split("\n")]
+    return "\n".join(lines).rstrip("\n")
+
+
+def line_time(line):
+    """เวลาออกตัวของบรรทัด (HH:MM) — ใช้จับคู่ว่าเป็นช่องเวลาเดิมหรือช่องใหม่"""
+    m = re.search(r"(\d{2}:\d{2})", line or "")
+    return m.group(1) if m else None
+
+
+def _line_plain(line):
+    """เนื้อบรรทัดสำหรับเทียบ (ตัด flag 🟡🟢 + 🔷 + ช่องว่างซ้ำ)"""
+    s = re.sub(r"[🟡🟢🔷]", "", line or "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def plan_cell_text(cur_str, entries):
+    """ข้อความเซลล์ + flag **ต่อบรรทัด**: 🟢 = เที่ยวใหม่ (ไม่มีในเซลล์เดิม) ·
+    🟡 = เที่ยวเดิม (เวลา+ชั่วโมงตรง) แต่เนื้อเปลี่ยน · ไม่ติด = เท่าเดิม
+
+    แก้ 10 ก.ย. 69 (พี่เจแจ้ง): เดิมต่อ " 🟢" ท้ายเซลล์เสมอ → ไปติดบรรทัดสุดท้ายที่ไม่ได้เปลี่ยน
+    (เคสจริง 10月26: ลบ 18:30 ออก แต่ 🟢 ไปติด 06:00 = ผิด). ลบเที่ยว = ไม่มี flag (削除 แจ้งทาง LINE)
+    """
+    raw_lines = [ln for ln in (cur_str or "").split("\n") if ln.strip()]  # เก็บ flag เดิมไว้ตรวจ
+    cur_lines = [strip_flags(ln) for ln in raw_lines]
+    pool = Counter(k for k in (line_time(ln) for ln in cur_lines) if k)
+    out = []
+    for e in entries:
+        ln = d2_text(e)
+        key = line_time(ln)
+        flag = ""
+        if key and pool.get(key, 0) > 0:
+            pool[key] -= 1
+            olds = [o for o in raw_lines if line_time(o) == key]
+            # เที่ยวนี้ติด flag ของวันนี้อยู่แล้ว = คง flag เดิม (เขียนซ้ำวันเดียวกันไม่ลบเครื่องหมาย)
+            held = next((f for f in ("🟢", "🟡") if any(f in o for o in olds)), "")
+            if held:
+                flag = held
+            elif all(_line_plain(o) != _line_plain(ln) for o in olds):
+                flag = "🟡"
+        else:
+            flag = "🟢"
+        out.append(f"{ln} {flag}" if flag else ln)
+    return "\n".join(out)
 
 
 def build_plan(form_rows):
@@ -429,9 +474,9 @@ def build_plan(form_rows):
         month = d.month
         if month not in taicho:
             continue
-        target_text = "\n".join(d2_text(e) for e in entries)
         current = taicho[month]["cells"].get(d.day)
         cur_str = str(current) if current is not None else None
+        target_text = plan_cell_text(cur_str, entries)  # flag 🟢/🟡 ต่อบรรทัด (แก้ 10 ก.ย. 69)
         if cell_canon(cur_str) != cell_canon(target_text):
             reason = "ลบ (งานยกเลิก/ไม่มีแล้ว)" if not entries else (
                 "ลงใหม่" if cur_str is None else "แก้ไข")
@@ -468,13 +513,9 @@ def apply_plan(plan, dry_run=True):
             if dry_run:
                 print(f"  [{reason}] {month}月{day:02d} {rng}: {cur!r} -> {target_text!r}", flush=True)
                 continue
+            # flag 🟢/🟡 ต่อบรรทัดถูกใส่ใน plan_cell_text แล้ว — ห้ามต่อท้ายเซลล์ (10 ก.ย. 69)
             text = target_text
-            runs = color_runs(text)
-            if text:
-                # flag 🟢 = เที่ยวที่ระบบเขียนวันนี้ (ต่อท้ายบรรทัดสุดท้าย เหมือนของเดิม)
-                text = text + " 🟢"
-                runs = color_runs(text)
-            write_cell_rich(entry_row, day, text, runs)
+            write_cell_rich(entry_row, day, text, color_runs(text))
             print(f"  [เขียน D2] {month}月{day:02d} {rng}: {cur!r} -> {text!r}", flush=True)
 
 
