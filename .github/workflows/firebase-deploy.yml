@@ -100,8 +100,13 @@ jobs:
           esac
           for cb in $CBS; do
             echo "== deploy functions:$cb =="
+            # set +e ก่อน: ถ้า deploy ล้ม ต้องพิมพ์ log ออกมาให้เห็นสาเหตุ (10 ก.ย. 69: set -e ทำให้ log หาย)
+            set +e
             out="$(npx --yes firebase-tools@${{ env.FIREBASE_TOOLS }} deploy --only functions:$cb --project ${{ env.PROJECT }} --force 2>&1)"
+            rc=$?
+            set -e
             echo "$out"
+            [ "$rc" -eq 0 ] || { echo "FAIL: deploy $cb ออก rc=$rc"; exit 1; }
             # กันเคส lessons #123: CI ขึ้น success แต่ตัวที่ตั้งใจ deploy ไม่ได้ขึ้น
             # ต้องเห็น "Successful update operation" ของ function ที่ตรงกับ codebase ที่ขอ
             fn="${cb//-/_}"
