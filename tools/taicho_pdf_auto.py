@@ -20,6 +20,7 @@ import taicho_gsheets as tg  # noqa: E402
 
 LOG = os.path.join(TOOLS, "taicho_pdf_auto.log")
 STATE = os.path.join(TOOLS, "taicho_pdf_auto_state.json")
+BUILT = os.path.join(TOOLS, "taicho_pdf_auto_built.json")  # {mmdd: master modifiedTime ตอนสร้าง PDF}
 FORM_BASE = tg.FORM_BASE
 
 
@@ -44,6 +45,22 @@ def save_baseline(ts):
         json.dump({"baseline_ts": ts}, fh, ensure_ascii=False, indent=2)
 
 
+def load_built():
+    """{mmdd: master modifiedTime ตอนสร้าง PDF ล่าสุด} — เทียบเวลา server-vs-server
+    (ไม่พึ่ง mtime เครื่อง → ไม่มีปัญหา clock skew ทำให้ rebuild วน)"""
+    try:
+        with open(BUILT, encoding="utf-8") as fh:
+            d = json.load(fh)
+            return {k: float(v) for k, v in d.items()} if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_built(d):
+    with open(BUILT, "w", encoding="utf-8") as fh:
+        json.dump(d, fh, ensure_ascii=False, indent=2)
+
+
 def find_python_exe():
     """QA child รันด้วย python.exe (ไม่ใช่ pythonw — กัน stdout หาย)"""
     exe = sys.executable or "python"
@@ -52,12 +69,13 @@ def find_python_exe():
 
 
 def main():
-    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะ จ-ศ 16:00-19:40 (ใบ 千栄 มา 16-19 + เผื่อสาย)
+    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะ จ-ศ 16:00-20:00 (ใบ 千栄 มา 16-19 · cloud apply ถึง 19:55
+    # → ต้องมีรอบหลัง 19:55 ไว้ rebuild PDF · แก้ 10 ก.ย. 69 จากเดิม 19:40)
     # นอก window/วันหยุด = ออกเงียบ กันอ่าน master นอกเวลา (429) — 9 ก.ย. 69
     now_t = dt.datetime.now().time()
     if dt.datetime.now().weekday() >= 5:  # เสาร์-อาทิตย์
         return 0
-    if not (dt.time(16, 0) <= now_t <= dt.time(19, 40)):
+    if not (dt.time(16, 0) <= now_t <= dt.time(20, 0)):
         return 0
     baseline = load_baseline()
     if baseline <= 0:  # รอบแรก = ตั้ง baseline ตอนนี้ (ไม่ rebuild ใบเก่า)
@@ -72,6 +90,14 @@ def main():
     except Exception as e:  # noqa: BLE001
         log(f"FAIL read master: {type(e).__name__}: {e}")
         return 1
+    # modifiedTime ของ master (Drive) — ใบวันนี้ต้อง rebuild ถ้า master ถูกแก้หลัง PDF เกิด
+    # (cloud apply รอบสุดท้าย 19:55 · เดิมเทียบแค่ mtime ของใบ → PDF ค้างเวอร์ชันเก่าทั้งคืน · 10 ก.ย. 69)
+    try:
+        master_mt = tg.master_modified_epoch()
+    except Exception as e:  # noqa: BLE001
+        master_mt = 0.0
+        log(f"WARN read master modifiedTime: {type(e).__name__}: {e}")
+    built = load_built()  # {mmdd: master modifiedTime ตอนสร้าง PDF ล่าสุด}
     made = []  # (mmdd, pdf_path)
     for mm in sorted(k for k in taicho.keys() if isinstance(k, int)):
         month_dir = os.path.join(FORM_BASE, f"{mm}月")
@@ -96,9 +122,20 @@ def main():
                 continue
             pdf_name = tg.pdf_filename(mm, mmdd)
             pdf_path = os.path.join(month_dir, pdf_name)
-            # มี PDF แล้วและใหม่กว่า/เท่าใบ = สร้างไปแล้ว
-            if os.path.exists(pdf_path) and os.path.getmtime(pdf_path) >= leaf_mtime:
+            pdf_mtime = os.path.getmtime(pdf_path) if os.path.exists(pdf_path) else 0.0
+            # ใบวันนี้: rebuild ถ้า (ก) ยังไม่มี PDF (ข) ใบใหม่กว่า PDF (ค) master ถูกแก้หลังสร้าง PDF
+            #   (ค) ใช้ master modifiedTime เทียบกับค่าที่บันทึกตอนสร้าง → ไม่พึ่ง mtime เครื่อง
+            # ใบเก่า: พฤติกรรมเดิม (PDF ใหม่กว่า/เท่าใบ = สร้างแล้ว)
+            if is_today:
+                need = (pdf_mtime == 0 or leaf_mtime > pdf_mtime
+                        or master_mt > built.get(mmdd, 0.0) + 1)
+            else:
+                need = pdf_mtime == 0 or pdf_mtime < leaf_mtime
+            if not need:
                 continue
+            if is_today and pdf_mtime:
+                log(f"REBUILD {mmdd}: master ใหม่กว่า PDF (master={master_mt:.0f} "
+                    f"built={built.get(mmdd, 0.0):.0f} pdf_mtime={pdf_mtime:.0f})")
             day = int(mmdd[2:])
             if day not in cells:
                 if is_today:
@@ -114,6 +151,8 @@ def main():
             except Exception as e:  # noqa: BLE001
                 log(f"BUILD FAIL {mmdd}: {type(e).__name__}: {e}")
                 return 1
+            built[mmdd] = master_mt  # จำ master ตอนสร้าง — กัน rebuild วนในรอบถัดไป
+            save_built(built)
             made.append((mmdd, pdf_path))
     fails = 0
     py = find_python_exe()

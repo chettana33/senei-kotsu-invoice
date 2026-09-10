@@ -365,22 +365,6 @@ def color_runs(text):
     return runs
 
 
-def cell_canon(text):
-    """คืนชุด (เวลา, ชั่วโมง) ของเซลล์/บรรทัดหลายบรรทัด สำหรับ diff — ไม่สน 空/ホ/🔷/flag"""
-    pairs = []
-    for ln in (text or "").split("\n"):
-        ln = ln.strip()
-        m = re.search(r"(\d{2}:\d{2})", ln)
-        if not m:
-            continue
-        h = None
-        hm = re.search(r"(\d+)H", ln)
-        if hm:
-            h = hm.group(1)
-        pairs.append((m.group(1), h or ""))
-    return "|".join(f"{t} {h}".strip() for t, h in sorted(pairs))
-
-
 def parse_form_bytes(data):
     """อ่านใบขอรถ -> {date: [entry]} โดย entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)
     วันที่ใบระบุ キャンセล (col J) ทั้งหมด = คิวถูกยกเลิก -> ฝาก {date: []} ให้ build_plan เห็น
@@ -424,9 +408,10 @@ def strip_flags(s):
 
 
 def line_time(line):
-    """เวลาออกตัวของบรรทัด (HH:MM) — ใช้จับคู่ว่าเป็นช่องเวลาเดิมหรือช่องใหม่"""
-    m = re.search(r"(\d{2}:\d{2})", line or "")
-    return m.group(1) if m else None
+    """เวลาออกตัวของบรรทัด (HH:MM) — ใช้จับคู่ว่าเป็นช่องเวลาเดิมหรือช่องใหม่
+    รับ 全角コロン '：' ด้วย (เซลล์พิมพ์มือ/ของเก่า) แล้วคืนรูป 半角 เสมอ"""
+    m = re.search(r"(\d{2})[:：](\d{2})", line or "")
+    return f"{m.group(1)}:{m.group(2)}" if m else None
 
 
 def _line_plain(line):
@@ -443,7 +428,7 @@ def _flag_of(line):
     return ""
 
 
-D2_RE = re.compile(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}(?:\s+\d+H)?(?:\s+[ホ空])?$")
+D2_RE = re.compile(r"^(?:[ホ空]\s*)?\d{1,2}[:：]\d{2}(?:\s+\d+H)?(?:\s+[ホ空])?$")
 
 
 def _foreign_lines(text):
@@ -713,6 +698,18 @@ def rotate_table_if_needed():
 
 # ---------------- orchestrator ----------------
 
+def _mt_key(s):
+    """คีย์เรียงเวลาแบบ epoch (float) — **ห้ามเทียบ ISO string ตรง ๆ** (lessons #121: state เก็บ
+    '2026-09-10T09:35:17.339Z' (UTC+millis) แต่บางที่ได้ '+07:00'/ไม่มี millis → string compare
+    เรียงผิด → re-apply + LINE ซ้ำ). parse ไม่ได้ (ค่าว่าง/รูปแบบแปลก) = 0.0 = เก่าสุด (ไม่ trigger re-add)"""
+    if not s:
+        return 0.0
+    try:
+        return _dt.datetime.fromisoformat(str(s).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
+
+
 def _select_new_forms(procd, pmt, forms, bootstrapped, now=None):
     """คัดใบที่ต้องประมวลผลจาก state + ใบใน Drive (pure logic — test ได้, 9 ก.ย. 69 v2)
     แก้ procd/pmt ในที่ คืน (new_forms, bootstrapped). state processed = ชื่อล้วน (legacy) หรือ
@@ -729,9 +726,9 @@ def _select_new_forms(procd, pmt, forms, bootstrapped, now=None):
     for nm, flist in list(by_name.items()):
         if nm not in plain_set:
             continue
-        maxmt = max(mt for _, mt in flist)
+        maxmt = max((mt for _, mt in flist), key=_mt_key)
         if len(flist) > 1:
-            if maxmt < fresh_cutoff:
+            if _mt_key(maxmt) < _mt_key(fresh_cutoff):
                 continue  # ชื่อซ้ำของไฟล์เก่า = ไม่แตะ (กัน rebuild ใบเก่าทับข้อมูลใหม่)
             procd.remove(nm)
             print(f"dup-name {nm} ({len(flist)} files) -> retire legacy, newest wins", flush=True)
@@ -741,7 +738,7 @@ def _select_new_forms(procd, pmt, forms, bootstrapped, now=None):
         if old is None:
             pmt[nm] = mt or ""
             print(f"proc_mt init {nm} = {mt}", flush=True)
-        elif mt and mt > old and mt >= fresh_cutoff:
+        elif mt and _mt_key(mt) > _mt_key(old) and _mt_key(mt) >= _mt_key(fresh_cutoff):
             procd.remove(nm)
             print(f"re-add {nm} (updated {old} -> {mt})", flush=True)
     # (d) bootstrap ก่อนคัด (เฉพาะ state ใหม่จริง — flag กัน re-add โล่งแล้วเข้า bootstrap ผิดรอบ)
@@ -767,7 +764,7 @@ def _select_new_forms(procd, pmt, forms, bootstrapped, now=None):
     # (c) ชื่อซ้ำ/หลายเวอร์ชัน: เอาเฉพาะ mtime สูงสุด (กันของเก่าทับของใหม่)
     best = {}
     for mmdd, fid, nm, mt in cands:
-        if nm not in best or mt > best[nm][3]:
+        if nm not in best or _mt_key(mt) > _mt_key(best[nm][3]):
             best[nm] = (mmdd, fid, nm, mt)
     new_forms = [best[nm] for nm in sorted(best, key=lambda n: best[n][0])]
     return new_forms, bootstrapped

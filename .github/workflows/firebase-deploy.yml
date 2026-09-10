@@ -7,7 +7,8 @@ on:
         description: codebase ที่จะ deploy (cgman-monitor | taicho-monitor | all)
         type: choice
         options: [cgman-monitor, taicho-monitor, all]
-        default: cgman-monitor
+        required: true
+        default: taicho-monitor
 
 permissions:
   contents: read
@@ -99,7 +100,16 @@ jobs:
           esac
           for cb in $CBS; do
             echo "== deploy functions:$cb =="
-            npx --yes firebase-tools@${{ env.FIREBASE_TOOLS }} deploy --only functions:$cb --project ${{ env.PROJECT }} --force
+            out="$(npx --yes firebase-tools@${{ env.FIREBASE_TOOLS }} deploy --only functions:$cb --project ${{ env.PROJECT }} --force 2>&1)"
+            echo "$out"
+            # กันเคส lessons #123: CI ขึ้น success แต่ตัวที่ตั้งใจ deploy ไม่ได้ขึ้น
+            # ต้องเห็น "Successful update operation" ของ function ที่ตรงกับ codebase ที่ขอ
+            fn="${cb//-/_}"
+            echo "$out" | grep -q "Successful update operation" \
+              || { echo "FAIL: ไม่พบ 'Successful update operation' ใน log ของ $cb"; exit 1; }
+            echo "$out" | grep -q "$fn" \
+              || { echo "FAIL: log ไม่ได้ deploy function $fn (ขอ codebase=$cb)"; exit 1; }
+            echo "OK: deploy $cb -> function $fn (มี Successful update operation)"
           done
 
       # ไม่เชื่อ "Deploy complete!" หลอก — ดู functions:list + log จริง (rules §2; resource ชื่อ underscore)

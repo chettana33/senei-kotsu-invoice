@@ -260,19 +260,16 @@ def color_runs(text):
     return runs
 
 
-def cell_canon(text):
-    """ชุด (เวลา, ชั่วโมง) ของข้อความหลายบรรทัด สำหรับ diff — ไม่สน 空/ホ/🔷/flag"""
-    pairs = []
-    for ln in (text or "").split("\n"):
-        m = re.search(r"(\d{2}:\d{2})", ln)
-        if not m:
-            continue
-        h = None
-        hm = re.search(r"(\d+)H", ln)
-        if hm:
-            h = hm.group(1)
-        pairs.append((m.group(1), h or ""))
-    return "|".join(f"{t} {h}".strip() for t, h in sorted(pairs))
+def master_modified_epoch():
+    """`modifiedTime` ของ master (Drive v3) เป็น epoch วินาที — ใช้เทียบกับ mtime ของ PDF
+
+    ทำไม: `taicho_pdf_auto.py` เดิมเทียบ PDF กับ mtime ของ **ใบ** เท่านั้น → ถ้า cloud apply
+    เกิดหลัง PDF (apply รอบสุดท้าย 19:55) PDF จะค้างเวอร์ชันเก่าทั้งคืน (แก้ 10 ก.ย. 69)"""
+    tok = get_token()
+    url = f"https://www.googleapis.com/drive/v3/files/{SHEET_ID}?fields=modifiedTime"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"})
+    d = json.load(urllib.request.urlopen(req, timeout=30))
+    return datetime.datetime.fromisoformat(d["modifiedTime"].replace("Z", "+00:00")).timestamp()
 
 
 def write_cell_rich(entry_row, day, text, runs):
@@ -343,9 +340,10 @@ def strip_flags(s):
 
 
 def line_time(line):
-    """เวลาออกตัวของบรรทัด (HH:MM) — ใช้จับคู่ว่าเป็นช่องเวลาเดิมหรือช่องใหม่"""
-    m = re.search(r"(\d{2}:\d{2})", line or "")
-    return m.group(1) if m else None
+    """เวลาออกตัวของบรรทัด (HH:MM) — ใช้จับคู่ว่าเป็นช่องเวลาเดิมหรือช่องใหม่
+    รับ 全角コロン '：' ด้วย (เซลล์พิมพ์มือ/ของเก่า) แล้วคืนรูป 半角 เสมอ"""
+    m = re.search(r"(\d{2})[:：](\d{2})", line or "")
+    return f"{m.group(1)}:{m.group(2)}" if m else None
 
 
 def _line_plain(line):
@@ -362,7 +360,7 @@ def _flag_of(line):
     return ""
 
 
-D2_RE = re.compile(r"^(?:[ホ空]\s*)?\d{1,2}:\d{2}(?:\s+\d+H)?(?:\s+[ホ空])?$")
+D2_RE = re.compile(r"^(?:[ホ空]\s*)?\d{1,2}[:：]\d{2}(?:\s+\d+H)?(?:\s+[ホ空])?$")
 
 
 def _foreign_lines(text):
