@@ -141,13 +141,26 @@ def state_file_id(token):
     return json.loads(urllib.request.urlopen(req, timeout=30).read()).get("id")
 
 
+class StateReadError(Exception):
+    """อ่าน state ไม่ได้ (Drive/JSON เสีย) — ห้ามเดาว่า state ว่าง (10 ก.ย. 69)
+
+    เดิม load_state คืน {"processed": []} ทุกกรณี → ถ้า Drive ตอบ 429/5xx ชั่วคราว
+    bootstrap จะมองว่าเป็น state ใหม่ → mark ใบเก่า + ประมวลผลใบใหม่สุด = apply ทับ + LINE ซ้ำ
+    """
+
+
 def load_state(token):
     fid = state_file_id(token)
     try:
         raw = _get_media(f"{DRIVE_API}/files/{fid}?alt=media", token)
-        return json.loads(raw.decode("utf-8"))
-    except Exception:
+    except Exception as e:  # noqa: BLE001
+        raise StateReadError(f"โหลด state ไม่ได้: {type(e).__name__}: {e}") from e
+    if not raw.strip():  # ไฟล์ว่างจริง = ติดตั้งใหม่
         return {"processed": []}
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except Exception as e:  # noqa: BLE001
+        raise StateReadError(f"state ไม่ใช่ JSON: {type(e).__name__}: {e}") from e
 
 
 def save_state(state, token):
@@ -665,7 +678,12 @@ def _select_new_forms(procd, pmt, forms, bootstrapped, now=None):
 
 def run_flow():
     token = sheets_token()
-    state = load_state(token)
+    try:
+        state = load_state(token)
+    except StateReadError as e:
+        # อ่าน state ไม่ได้ = หยุดทั้งรอบ (ไม่ apply / ไม่ LINE / ไม่เขียน state ทับ) — 10 ก.ย. 69
+        print(f"ABORT: {e} — ไม่ประมวลผลรอบนี้ (กัน bootstrap ผิด = apply/LINE ซ้ำ)", flush=True)
+        return "state read failed"
     try:
         rotate_table_if_needed()
         clear_stale_flags(state)
