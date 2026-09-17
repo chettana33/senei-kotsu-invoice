@@ -57,6 +57,20 @@ MODEL_NAME = "พาเที่ยว (Buffy/Freebuff)"
 
 SHEET_PREFIX = "26."   # sheet ในใบขอรถ เช่น 26.8 = ส.ค. 2026
 
+# ------------------------------------------------- ที่อยู่บริษัทบนหัวใบแจ้งหนี้ ---
+# ค่ามาตรฐานใหม่ — พี่เจให้ 16 ก.ย. 69 ("ครั้งต่อไปใช้ตามนี้") · rules taicho §27
+# ทำไมต้องเขียนจากค่าคงที่: template `7月前半` ยังมีที่อยู่เก่าติดอยู่ ⇒ ไฟล์ที่สร้างอัตโนมัติ
+# (เช่น 9月前半) ได้ที่อยู่เก่าโดยไม่มีใครรู้ (กับดักจริง 16 ก.ย. 69)
+COMPANY_HEADER = {
+    "I8": "千栄交通株式会社",
+    "I9": "登録番号T4011101067436",
+    "I10": "新宿区新宿4-1-22-1102",
+    "L11": "TEL:03-5990-2528",
+    "L12": "FAX : 03-5990-2529",
+}
+# ชุดเก่าที่ห้ามหลุดลงไฟล์ (ใช้เป็นตัวตรวจหลังเขียน)
+OLD_COMPANY_VALUES = ("新宿区新宿4-3-15-405", "03-6709-8155", "03-6705-8156")
+
 # ห้ามส่ง Discord เด็ดขาด (pattern ข้อมูลลับ)
 SENSITIVE_PATTERNS = [
     r"ghp_[A-Za-z0-9]{36}", r"gho_[A-Za-z0-9]{36}", r"sk-[A-Za-z0-9]{20,}",
@@ -221,6 +235,10 @@ def build_invoice(template: str, out_path: str, year: int, month: int, half: str
 
     ws.title = f"ザ エディスターホテル成田 - 請求書 {year}-{month}({tab_number(half)})"
     ws["K3"] = invoice_no(year, month, half)
+
+    # ที่อยู่บริษัท: เขียนทับจากค่าคงที่ทุกครั้ง (template ยังมีที่อยู่เก่า — กับดัก 16 ก.ย. 69)
+    for cell, value in COMPANY_HEADER.items():
+        ws[cell] = value
     # J4 = =TODAY() คงไว้ (ใช้วันส่งจริง)
 
     # ล้างรายการเดิม (แถว 17-34)
@@ -246,7 +264,33 @@ def build_invoice(template: str, out_path: str, year: int, month: int, half: str
     apply_borders(ws)
 
     wb.save(out_path)
+
+    # ตรวจหลังเขียน: ที่อยู่ต้องตรงค่าคงที่ + ต้องไม่มีชุดเก่าหลงเหลือ (fail-closed — กันแนบเมล์ผิด)
+    verify_company_header(out_path)
     return out_path
+
+
+def verify_company_header(path: str) -> None:
+    """อ่านไฟล์ที่เพิ่งเขียน ยืนยันที่อยู่บริษัท = ค่าคงที่ และไม่มีชุดเก่าหลงเหลือ
+
+    โยน RuntimeError ถ้าไม่ผ่าน (ห้ามแนบเมล์/แจ้ง Discord ต่อ) — กันเคส 16 ก.ย. 69 ที่
+    ไฟล์ที่สร้างอัตโนมัติได้ที่อยู่เก่าจาก template โดยไม่มีสัญญาณเตือน
+    """
+    wb = openpyxl.load_workbook(path)
+    ws = wb.active
+    for cell, want in COMPANY_HEADER.items():
+        got = ws[cell].value
+        if str(got or "").strip() != want:
+            raise RuntimeError(f"ที่อยู่บริษัทไม่ตรง: {cell} ได้ {got!r} · ต้องเป็น {want!r} ({path})")
+    leftovers = []
+    for row in ws.iter_rows():
+        for c in row:
+            val = str(c.value or "")
+            for old in OLD_COMPANY_VALUES:
+                if old in val:
+                    leftovers.append(f"{c.coordinate}={val}")
+    if leftovers:
+        raise RuntimeError(f"พบที่อยู่/เบอร์ชุดเก่าค้างในไฟล์: {leftovers[:3]} ({path})")
 
 
 # -------------------------------------------------------------- Discord -----
