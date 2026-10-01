@@ -191,6 +191,33 @@ def main():
           (tg.TMP_TAB_TITLE, cloud.TMP_TAB_TITLE), ("千栄1568 tmp", "千栄1568 tmp"))
     check("tmp ไม่ถูกจับเป็นแท็บหลัก", tg.main_tab_key(tg.TMP_TAB_TITLE), None)
 
+    print("--- E) ปีของเดือนใหม่ยึดปีจริงในชีต + ชื่อไฟล์ PDF ไม่ hardcode ปี ---")
+    t_lag = fake_t([8, 9, 10, 11], years={8: 2026, 9: 2026, 10: 2026, 11: 2026})
+    check("หน้าต่างตามหลัง 4 เดือน: 12月 = 2026 (สูตรเดิมให้ 2027 ผิด)",
+          tg.rotate_plan(t_lag, datetime.date(2027, 1, 1))["new_year"], 2026)
+    t_now = fake_t([9, 10, 11, 12], years={9: 2026, 10: 2026, 11: 2026, 12: 2026})
+    check("ปกติ: 1月 = 2027 (ข้ามปีจริง)", tg.rotate_plan(t_now, oct1)["new_year"], 2027)
+    t_cross = fake_t([10, 11, 12, 1], years={10: 2026, 11: 2026, 12: 2026, 1: 2027})
+    check("หน้าต่างข้ามปีจริง: 2月 = 2027",
+          tg.rotate_plan(t_cross, datetime.date(2026, 11, 1))["new_year"], 2027)
+
+    check("pdf_filename 9月 @ ก.ย. 69", tg.pdf_filename(9, "0901", datetime.date(2026, 9, 1)),
+          "2026台帳 - 千栄1568 - 9月-12月(0901).pdf")
+    check("pdf_filename 10月 @ ต.ค. 69", tg.pdf_filename(10, "1001", oct1),
+          "2026台帳 - 千栄1568 - 10月-01月(1001).pdf")
+    check("pdf_filename 1月 @ ม.ค. 70", tg.pdf_filename(1, "0101", datetime.date(2027, 1, 1)),
+          "2027台帳 - 千栄1568 - 1月-04月(0101).pdf")
+    check("pdf_filename 12月 @ ม.ค. 70 (ฟอร์มค้างเดือน)", tg.pdf_filename(12, "1231", datetime.date(2027, 1, 5)),
+          "2026台帳 - 千栄1568 - 12月-03月(1231).pdf")
+    check("pdf_filename 10月 @ ต.ค. 70 (เดิมพลาด = 2026)",
+          tg.pdf_filename(10, "1001", datetime.date(2027, 10, 1)),
+          "2027台帳 - 千栄1568 - 10月-01月(1001).pdf")
+    check("pdf_filename: cloud = tools", cloud.pdf_filename(10, "1001", oct1),
+          tg.pdf_filename(10, "1001", oct1))
+    check("rotate_plan ปีจากชีต: cloud = tools",
+          cloud.rotate_plan(t_lag, datetime.date(2027, 1, 1)),
+          tg.rotate_plan(t_lag, datetime.date(2027, 1, 1)))
+
     print()
     if FAILED:
         print(f"❌ FAIL {len(FAILED)} เคส: {FAILED}")

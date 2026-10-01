@@ -181,13 +181,14 @@ def save_state(state, token):
 # ดู rules: 00_SOP_Master/01_AI_Protocols/system-rules/taicho.md + QA: tools/taicho_qa.py
 # cloud function นี้ = apply + LINE เท่านั้น (PDF สร้างที่เครื่อง: python tools/taicho_pdf.py pdf --date MMDD)
 
-def pdf_filename(mm, mmdd):
+def pdf_filename(mm, mmdd, today=None):
     """ชื่อไฟล์ PDF ตามเดือนไส้ใน (ตรง tools/taicho_gsheets.py pdf_filename):
-    mm=9 -> '9月-12月', mm=10 -> '10月-01月'; ปี = 2026 ถ้า mm>=8 else 2027."""
+    mm=9 -> '9月-12月', mm=10 -> '10月-01月'; ปีคิดจากวันที่จริง ไม่ hardcode (เดิมผิดตั้งแต่ ส.ค. 70)"""
+    today = today or _dt.date.today()
     m3 = mm + 3
     if m3 > 12:
         m3 -= 12
-    year = 2026 if mm >= 8 else 2027
+    year = today.year if mm <= today.month else today.year - 1
     return f"{year}台帳 - 千栄1568 - {mm}月-{m3:02d}月({mmdd}).pdf"
 
 
@@ -278,10 +279,14 @@ def rotate_plan(t, today):
     first_header = t[first]["row"] - 3
     last_header = t[last]["row"] - 3
     new_month = (last % 12) + 1
-    # ปีของ "เดือนใหม่" = ปีของเดือนสุดท้ายของหน้าต่างใหม่ (มติพี่เจ 1 ต.ค. 69)
-    # เดิม `2027 if new_month == 1 else 2026` → 1 พ.ย. 69 จะเขียนหัวเดือน "2026年 2月" ผิด
-    # `>=` (ไม่ใช่ `>`): เคสตามไม่ทัน (first อยู่ก่อนเดือนปัจจุบัน) เดือนใหม่ = เดือนปัจจุบัน = ปีนี้
-    new_year = today.year if new_month >= today.month else today.year + 1
+    # ปีของ "เดือนใหม่" — ยึด **ปีจริงของเดือนสุดท้ายในชีต** (header '2026年 12月' = t[last]["year"])
+    # แล้ว +1 เฉพาะตอนข้ามปี (ธ.ค. → ม.ค. เท่านั้น: new_month < last)
+    # เดิมคิดจาก today → เพี้ยนเมื่อหน้าต่างตามหลัง ≥2 เดือน · fallback สูตรเดิมเมื่อชีตไม่มีปี
+    last_year = t[last].get("year")
+    if last_year:
+        new_year = last_year + (1 if new_month < last else 0)
+    else:
+        new_year = today.year if new_month >= today.month else today.year + 1
     second_header = (t[months[1]]["row"] - 3) if len(months) > 1 else first_header + MONTH_BLOCK
     prev_header = (t[months[-2]]["row"] - 3) if len(months) > 1 else last_header - MONTH_BLOCK
     m0 = (first % 12) + 1
@@ -372,9 +377,15 @@ def read_taicho():
             if v not in (None, ""):
                 cells[day] = v
         ndays = DAYS_IN_MONTH.get(month, 30)
+        year = None
         hidx = idx - 3
         if hidx >= 0:
             hdr = rows[hidx] if hidx < len(rows) else []
+            # ปีจริงของเดือนนี้ (header col A = '2026年 12月') — rotate ใช้คำนวณปีเดือนใหม่
+            # (mirror tools/taicho_gsheets.py · กันปีเพี้ยนเมื่อหน้าต่างตามหลังหลายเดือน)
+            ym = re.search(r"(\d{4})年", str(hdr[0])) if hdr else None
+            if ym:
+                year = int(ym.group(1))
             nums = []
             for v in hdr[1:]:
                 try:
@@ -385,7 +396,7 @@ def read_taicho():
                     pass
             if nums:
                 ndays = max(nums)
-        taicho[month] = {"row": entry_row, "cells": cells, "ndays": ndays}
+        taicho[month] = {"row": entry_row, "cells": cells, "ndays": ndays, "year": year}
     return taicho
 
 
@@ -692,6 +703,11 @@ def rotate_table_if_needed():
         plan = rotate_plan(t, today)
         if not plan:
             break
+        # กัน rotate ซ้อน/ซ้ำ: แท็บปลายทางมีอยู่แล้ว = มีคน rotate ไปแล้ว (หรือค้างจากรอบที่ล้มกลางทาง)
+        # ⇒ rename จะชนชื่อ (400) อยู่ดี — ข้ามพร้อม log แทนที่จะยิง API แล้วล้ม
+        if plan["title"] in list_tabs():
+            print(f"rotate: แท็บ {plan['title']} มีอยู่แล้ว — ข้ามรอบนี้ (กัน rotate ซ้อน)", flush=True)
+            break
         rotated = True
         first = plan["first"]
         first_header, first_block = plan["first_header"], plan["first_block"]
@@ -962,7 +978,10 @@ def run_flow():
     return f"processed {len(new_forms)} form(s)"
 
 
-@https_fn.on_request(region=SupportedRegion.ASIA_SOUTHEAST1)
+# concurrency=1 + max_instances=1 = Cloud Run รับทีละ request (ตัวอื่นรอคิว) ⇒ ไม่มีรอบรันซ้อน
+# = lock ระดับแพลตฟอร์มสำหรับ rotate/apply (เคสจริง 1 ต.ค. 69: รอบ 09:00 timeout แล้ว 09:01 ทำงานทับกัน
+# จนรอบหนึ่งไปลบแท็บ 千栄1568 tmp ที่อีกรอบกำลังใช้ — review มุมคนนอก 1 ต.ค. 69)
+@https_fn.on_request(region=SupportedRegion.ASIA_SOUTHEAST1, concurrency=1, max_instances=1)
 def taicho_monitor(req: https_fn.Request) -> https_fn.Response:
     """HTTP entry. 7 ก.ย. 69: PDF hook ถอดออก (reportlab reject — PDF = ที่เครื่อง HTML+Edge)
     body/query {pdf: 1} = ตอบวิธีสร้าง PDF ที่เครื่อง (taicho_pdf.py + taicho_qa.py)"""

@@ -320,6 +320,11 @@ def rotate_table_if_needed():
         plan = tg.rotate_plan(t, today)
         if not plan:
             break
+        # กัน rotate ซ้อน/ซ้ำ: แท็บปลายทางมีอยู่แล้ว = rotate ไปแล้ว (หรือค้างจากรอบที่ล้มกลางทาง)
+        # ⇒ rename จะชนชื่อ (400) อยู่ดี — ข้ามพร้อม log แทนที่จะยิง API แล้วล้ม
+        if plan["title"] in tg.list_tabs():
+            log.warning("rotate: แท็บ %s มีอยู่แล้ว — ข้ามรอบนี้ (กัน rotate ซ้อน)", plan["title"])
+            break
         rotated = True
         first, new_month, new_year = plan["first"], plan["new_month"], plan["new_year"]
         first_header, first_block = plan["first_header"], plan["first_block"]

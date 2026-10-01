@@ -219,10 +219,15 @@ def rotate_plan(t, today):
     first_header = t[first]["row"] - 3
     last_header = t[last]["row"] - 3
     new_month = (last % 12) + 1
-    # ปีของ "เดือนใหม่" = ปีของเดือนสุดท้ายของหน้าต่างใหม่ (มติพี่เจ 1 ต.ค. 69)
-    # เดิม `2027 if new_month == 1 else 2026` → 1 พ.ย. 69 จะเขียนหัวเดือน "2026年 2月" ผิด
-    # `>=` (ไม่ใช่ `>`): เคสตามไม่ทัน (first อยู่ก่อนเดือนปัจจุบัน) เดือนใหม่ = เดือนปัจจุบัน = ปีนี้
-    new_year = today.year if new_month >= today.month else today.year + 1
+    # ปีของ "เดือนใหม่" — ยึด **ปีจริงของเดือนสุดท้ายในชีต** (header '2026年 12月' = t[last]["year"])
+    # แล้ว +1 เฉพาะตอนข้ามปี (ธ.ค. → ม.ค. เท่านั้น: new_month < last)
+    # เดิมคิดจาก today → เพี้ยนเมื่อหน้าต่างตามหลัง ≥2 เดือน (1 ม.ค. 70 + หน้าต่าง [8,9,10,11]
+    # เคยได้ 12月 = 2027 ที่จริง 2026) · fallback สูตรเดิมเมื่อชีตไม่มีปีให้อ่าน
+    last_year = t[last].get("year")
+    if last_year:
+        new_year = last_year + (1 if new_month < last else 0)
+    else:
+        new_year = today.year if new_month >= today.month else today.year + 1
     second_header = (t[months[1]]["row"] - 3) if len(months) > 1 else first_header + MONTH_BLOCK
     prev_header = (t[months[-2]]["row"] - 3) if len(months) > 1 else last_header - MONTH_BLOCK
     m0 = (first % 12) + 1
@@ -574,14 +579,16 @@ EDGE = r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"  # ไม
 DAYS_IN_MONTH = {8: 30, 9: 30, 10: 31}  # ส.ค. ใน sheet มี 30 คอลัมน์ (1-30)
 
 
-def pdf_filename(mm, mmdd):
+def pdf_filename(mm, mmdd, today=None):
     """ชื่อไฟล์ PDF ตามเดือนไส้ใน (tab 4 เดือนเลื่อน) ไม่ใช่เดือนสร้าง:
     mm=9 → '9月-12月(0901)', mm=10 → '10月-01月(1001)', mm=1 → '1月-04月(0101)'.
-    ปี = ปีของเดือนแรก (ส.ค.-ธ.ค. = 2026, ม.ค.-ก.ค. = 2027). (พี่เจแก้ชื่อ 1 ก.ย. 69)"""
+    ปี = ปีของเดือนแรก — **คิดจากวันที่จริง** (ครั้งล่าสุดที่ถึงเดือนนั้น) ไม่ hardcode
+    (เดิม `2026 if mm >= 8 else 2027` → ผิดตั้งแต่ ส.ค. 70 เป็นต้นไป)"""
+    today = today or datetime.date.today()
     m3 = mm + 3
     if m3 > 12:
         m3 -= 12
-    year = 2026 if mm >= 8 else 2027
+    year = today.year if mm <= today.month else today.year - 1
     return f"{year}台帳 - 千栄1568 - {mm}月-{m3:02d}月({mmdd}).pdf"
 
 

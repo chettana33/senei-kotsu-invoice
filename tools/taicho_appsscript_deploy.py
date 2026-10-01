@@ -104,6 +104,8 @@ def main():
     ap.add_argument("--list", action="store_true", help="แสดง deployments ที่มี")
     ap.add_argument("--new", action="store_true",
                     help="สร้าง deployment ใหม่ (default: PATCH deployment เดิม — URL คงที่)")
+    ap.add_argument("--deployment", help="pin deploymentId ที่จะ PATCH (กันแก้ผิดตัว)")
+    ap.add_argument("--expect-url", help="URL ที่ต้องตรงกับ deployment ที่จะ PATCH — ไม่ตรง = หยุดก่อนแก้")
     args = ap.parse_args()
 
     tok = get_token()
@@ -122,15 +124,31 @@ def main():
 
     deps = list_deployments(tok).get("deployments", [])
     web_deps = [d for d in deps if _webapp_url(d)]
+    chosen = None
     if args.new or not web_deps:
         print("3/3 create deployment (new) ...")
         d = create_deployment(tok, vnum)
     else:
-        # เลือก deployment ล่าสุด (updateTime สูงสุด) — URL เดิมคงที่
-        web_deps.sort(key=lambda x: x.get("updateTime", ""))
-        dep_id = web_deps[-1]["deploymentId"]
-        print(f"3/3 update deployment {dep_id} (URL เดิมคงที่) ...")
-        d = update_deployment(tok, dep_id, vnum)
+        if args.deployment:
+            # pin ตรงตัว — กัน PATCH ผิด deployment (เคส: มี deployment ใหม่กว่าโผล่มา เช่นพี่เจกด deploy
+            # เองในหน้า Apps Script แต่ลิงก์ที่ LINE ใช้ยังชี้ตัวเดิม ⇒ "deploy สำเร็จ" แต่ของจริงไม่เปลี่ยน)
+            match = [x for x in web_deps if x["deploymentId"] == args.deployment]
+            if not match:
+                print(f"FAIL: ไม่พบ deployment {args.deployment} — รายการที่มี:")
+                for x in web_deps:
+                    print(f"  {x['deploymentId']}  {_webapp_url(x)}")
+                sys.exit(1)
+            chosen = match[0]
+        else:
+            # เลือก deployment ล่าสุด (updateTime สูงสุด) — URL เดิมคงที่
+            web_deps.sort(key=lambda x: x.get("updateTime", ""))
+            chosen = web_deps[-1]
+        if args.expect_url and _webapp_url(chosen) != args.expect_url:
+            print(f"FAIL: deployment {chosen['deploymentId']} ชี้ {_webapp_url(chosen)} "
+                  f"ไม่ตรง --expect-url {args.expect_url} — หยุดก่อน PATCH (กันแก้ผิดตัว)")
+            sys.exit(1)
+        print(f"3/3 update deployment {chosen['deploymentId']} (URL เดิมคงที่) {_webapp_url(chosen)}")
+        d = update_deployment(tok, chosen["deploymentId"], vnum)
     dep_id = d["deploymentId"]
     url = _webapp_url(d)
     print(f"DEPLOYMENT_ID={dep_id}")
