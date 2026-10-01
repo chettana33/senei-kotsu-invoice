@@ -56,30 +56,45 @@ def get_token():
     return json.load(urllib.request.urlopen(req, timeout=20))["access_token"]
 
 
-def find_main_tab():
-    """หาชื่อ tab 台帳 หลักแบบ dynamic: ชื่อ '千栄1568 <M0>月-<M3>月(<ปี>)' — rotate รายเดือนสร้าง tab ใหม่
-    (tab เก่าเก็บไว้เป็นประวัติ) → เลือก tab ที่ M0 (เดือนแรก) มากสุด = tab ล่าสุด.
-    TEST_TAICHO_TAB env = บังคับใช้ tab ที่ระบุ (ทดสอบ). คืน (title, gid) หรือ (None, None)."""
-    tok = get_token()
-    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}?fields=sheets(properties(title,sheetId))"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"})
-    d = json.load(urllib.request.urlopen(req, timeout=30))
-    test = os.environ.get("TEST_TAICHO_TAB")
+TAB_RE = re.compile(r"^千栄1568 (\d+)月-(\d+)月(?:\((\d{4})\))?\s*$")
+
+
+def main_tab_key(title):
+    """คีย์เรียงแท็บ台帳 หลัก = (ปีที่ "เดือนแรก" ของหน้าต่างเริ่ม, เดือนแรก) — คืน None = ไม่ใช่แท็บหลัก
+
+    ทำไมต้องมีปี (review มุมคนนอก 1 ต.ค. 69): ชื่อ tab ลงท้ายด้วยปีของ "เดือนสุดท้าย" (มติพี่เจ 1 ต.ค. 69)
+    ⇒ `10月-1月(2027)` เริ่ม ต.ค. 2026 · ถ้าเรียงด้วยเดือนแรกอย่างเดียว (เดิม = max M0)
+    พอขึ้นปีใหม่ `1月-4月(2027)` (M0=1) จะแพ้ `12月-3月(2027)` (M0=12) → เลือกแท็บเก่า → rotate
+    วนซ้ำ + `HTTP 400` ทั้งวัน แบบเดียวกับบั๊ก 1 ต.ค. 69"""
+    m = TAB_RE.match(title)
+    if not m:
+        return None
+    m0, m3 = int(m.group(1)), int(m.group(2))
+    year = int(m.group(3)) if m.group(3) else 0
+    start_year = year - 1 if (year and m0 > m3) else year
+    return (start_year, m0)
+
+
+def pick_main_tab(titles):
+    """เลือกชื่อแท็บ台帳 หลักจากรายชื่อแท็บ (pure — test ได้) · คืน None ถ้าไม่พบ"""
     best = None
-    for s in d["sheets"]:
-        t = s["properties"]["title"]
-        if test:
-            if t == test:
-                return t, s["properties"]["sheetId"]
-            continue
-        m = re.match(r"^千栄1568 (\d+)月-\d+月", t)
-        if m:
-            m0 = int(m.group(1))
-            if best is None or m0 > best[0]:
-                best = (m0, t, s["properties"]["sheetId"])
-    if best:
-        return best[1], best[2]
-    return None, None
+    for t in titles:
+        k = main_tab_key(t)
+        if k is not None and (best is None or k > best[0]):
+            best = (k, t)
+    return best[1] if best else None
+
+
+def find_main_tab():
+    """หาชื่อ tab 台帳 หลักแบบ dynamic: '千栄1568 <M0>月-<M3>月(<ปี>)' ตัวที่หน้าต่างใหม่สุด
+    (tab เก่าเก็บไว้เป็นประวัติ) — TEST_TAICHO_TAB env = บังคับใช้ tab ที่ระบุ (ทดสอบ)
+    คืน (title, gid) หรือ (None, None)"""
+    tabs = list_tabs()
+    test = os.environ.get("TEST_TAICHO_TAB")
+    if test:
+        return (test, tabs[test]) if test in tabs else (None, None)
+    name = pick_main_tab(tabs.keys())
+    return (name, tabs[name]) if name else (None, None)
 
 TMP_TAB_TITLE = "千栄1568 tmp"  # ชื่อแท็บชั่วคราวของ rotate (ห้ามตั้งชื่ออื่น)
 
@@ -102,6 +117,7 @@ def delete_stale_tmp_tab():
     sid = list_tabs().get(TMP_TAB_TITLE)
     if sid is None:
         return False
+    print(f"ลบแท็บค้าง {TMP_TAB_TITLE!r} sheetId={sid} (ชื่อซ้ำทำให้ rotate duplicate ไม่ได้)")
     tok = get_token()
     url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}:batchUpdate"
     body = json.dumps({"requests": [{"deleteSheet": {"sheetId": sid}}]}).encode()
@@ -246,9 +262,15 @@ def read_taicho():
                 cells[day] = v
         # จำนวนวันจริง = คอลัมน์วันใน header row (เช่น ส.ค. ใน sheet มีแค่ 1-30)
         ndays = DAYS_IN_MONTH.get(month, 30)
+        year = None
         hidx = idx - 3
         if hidx >= 0:
             hdr = rows[hidx] if hidx < len(rows) else []
+            # ปีของเดือนนี้ (header col A = '2026年 10月') — ใช้พิมพ์หัวเดือนใน PDF/เว็บแอปให้ถูกปี
+            # (เดิม PDF hardcode '2026年' ทุกเดือน ⇒ หน้าต่าง 10月-1月 พิมพ์ 1月 เป็น 2026 ผิด)
+            ym = re.search(r"(\d{4})年", str(hdr[0])) if hdr else None
+            if ym:
+                year = int(ym.group(1))
             nums = []
             for v in hdr[1:]:
                 try:
@@ -259,7 +281,7 @@ def read_taicho():
                     pass
             if nums:
                 ndays = max(nums)
-        taicho[month] = {"row": entry_row, "cells": cells, "ndays": ndays}
+        taicho[month] = {"row": entry_row, "cells": cells, "ndays": ndays, "year": year}
     return taicho
 
 

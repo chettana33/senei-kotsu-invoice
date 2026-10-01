@@ -7,9 +7,9 @@
  * LINE ส่งลิงก์ web app แทนไฟล์ PDF (พี่เจขอ 1 ก.ย. 69).
  */
 var SHEET_ID = "1H2WE2D8ZXrAI4jdOUm2N6DYGCWVD1SrYy9BqAfRFdC0";  // master จริง
-var MONTH_START = 9;   // เดือนแรกของรอบ (rotate รายเดือน)
+// ⚠️ 1 ต.ค. 69: ไม่มี MONTH_START/YEAR ตายตัวอีกแล้ว — หน้าต่าง 4 เดือนอ่าน "ลำดับจริงจากชีต"
+// (หน้าต่างข้ามปี 10月-1月 ทำให้การกรองด้วยเลขเดือนแสดงขาดเดือน + ปี hardcode ผิด)
 var MONTH_COUNT = 4;
-var YEAR = 2026;
 
 // สีหัวเดือน 30/31 วัน (lessons #51; ตรง -Jay): 30 = โทนเย็น, 31 = โทนอุ่น
 var HEADER_COLOR = {
@@ -17,7 +17,7 @@ var HEADER_COLOR = {
   31: ["#ffe5ea", "#fff2e7", "#ffe3c9"],  // ชมพู, ส้ม, เหลืองอ่อน
 };
 // เดือน -> ดัชนีสี (สลับให้ 2 เดือนติดกันไม่ซ้ำ)
-var MONTH_COLOR_IDX = {9: 0, 10: 0, 11: 1, 12: 1};
+var MONTH_COLOR_IDX = {9: 0, 10: 0, 11: 1, 12: 1, 1: 2, 2: 2, 3: 1, 4: 0};
 var DAYS_IN_MONTH = {1:31,2:28,3:31,4:30,5:31,6:30,7:31,8:31,9:30,10:31,11:30,12:31};
 
 /** Web App entry: คืน HTML 台帳 ปัจจุบัน (อ่านสดจาก Sheets ทุกครั้งที่เปิด). */
@@ -32,41 +32,55 @@ function doGet() {
       .addMetaTag("viewport", "width=device-width, initial-scale=1");
 }
 
-/** หา tab 台帳 หลัก: '千栄1568 <M0>月-<M3>月(<ปี>)' — เลือก M0 (เดือนแรก) มากสุด. */
+/** คีย์เรียงแท็บ台帳 หลัก = [ปีที่ "เดือนแรก" เริ่ม, เดือนแรก] — null = ไม่ใช่แท็บหลัก
+ *  ทำไมต้องมีปี (review มุมคนนอก 1 ต.ค. 69): ชื่อ tab ลงท้ายด้วยปีของ "เดือนสุดท้าย"
+ *  ⇒ '10月-1月(2027)' เริ่ม ต.ค. 2026 · ถ้าเลือกด้วย M0 อย่างเดียว (เดิม) พอขึ้นปีใหม่
+ *  '1月-4月(2027)' (M0=1) จะแพ้ '12月-3月(2027)' (M0=12) ⇒ เปิด/อ่านแท็บเก่าผิดทั้งเดือน */
+function mainTabKey(title) {
+  var m = String(title).match(/^千栄1568 (\d+)月-(\d+)月(?:\((\d{4})\))?\s*$/);
+  if (!m) return null;
+  var m0 = parseInt(m[1], 10);
+  var m3 = parseInt(m[2], 10);
+  var year = m[3] ? parseInt(m[3], 10) : 0;
+  return [year && m0 > m3 ? year - 1 : year, m0];
+}
+
+/** หา tab 台帳 หลัก: '千栄1568 <M0>月-<M3>月(<ปี>)' ตัวที่หน้าต่างใหม่สุด (ตาม [ปีเริ่ม, เดือนแรก]) */
 function findMainTab() {
-  var ss = SpreadsheetApp.openById(SHEET_ID);
-  var sheets = ss.getSheets();
+  var sheets = SpreadsheetApp.openById(SHEET_ID).getSheets();
   var best = null;
   for (var i = 0; i < sheets.length; i++) {
     var t = sheets[i].getName();
-    var m = t.match(/^千栄1568 (\d+)月-\d+月/);
-    if (m) {
-      var m0 = parseInt(m[1], 10);
-      if (best === null || m0 > best.m0) best = {m0: m0, name: t};
+    var k = mainTabKey(t);
+    if (k && (best === null || k[0] > best.k[0] || (k[0] === best.k[0] && k[1] > best.k[1]))) {
+      best = {k: k, name: t};
     }
   }
   if (best === null) throw new Error("ไม่พบ tab 台帳 หลัก (千栄1568 <M>月-<M>月)");
   return best.name;
 }
 
-/** อ่านตาราง: {month: {cells: {day: value}, ndays}} — layout เดียวกับ read_taicho() ใน Python. */
+/** อ่านตาราง: {order: [เดือนตามลำดับแถวในชีต], months: {month: {cells, ndays, year}}}
+ *  — layout เดียวกับ read_taicho() ใน Python (เพิ่ม order + year 1 ต.ค. 69)
+ *  ⚠️ ห้ามให้ object คีย์เดือนเป็นตัวกำหนดลำดับ: JS เรียงคีย์ตัวเลขเอง (1,10,11,12) ⇒ หน้าต่างข้ามปีเพี้ยน */
 function readTaicho() {
   var name = findMainTab();
   var sheet = SpreadsheetApp.openById(SHEET_ID).getSheetByName(name);
   var rows = sheet.getRange(1, 1, 80, 33).getDisplayValues();  // A1:AG80 (display text — time cells เป็น "07:00" ไม่ใช่ Date)
-  // month sections: แถวที่มี 'N月' ในคอลัมน์ A → entry แถว = header + 3
-  var sections = {};
+  // month sections: แถวที่มี 'N月' ในคอลัมน์ A → entry แถว = header + 3 (เก็บตามลำดับแถวจริง)
+  var sections = [];
   for (var i = 0; i < rows.length; i++) {
     var a = rows[i][0];
     if (a && typeof a === "string") {
       var m = a.match(/(\d+)月/);
-      if (m) sections[parseInt(m[1], 10)] = i + 4;  // 1-based entry row
+      if (m) sections.push({month: parseInt(m[1], 10), headerRow: i, entryRow: i + 4});
     }
   }
+  var order = [];
   var taicho = {};
-  for (var month in sections) {
-    month = parseInt(month, 10);
-    var idx = sections[month] - 1;  // 0-based
+  for (var s = 0; s < sections.length; s++) {
+    var month = sections[s].month;
+    var idx = sections[s].entryRow - 1;  // 0-based
     var entry = rows[idx] || [];
     var cells = {};
     for (var day = 1; day <= 31; day++) {
@@ -74,19 +88,20 @@ function readTaicho() {
       if (v !== null && v !== undefined && String(v) !== "") cells[day] = String(v);
     }
     var ndays = DAYS_IN_MONTH[month] || 30;
-    var hidx = idx - 3;  // header แถว (0-based)
-    if (hidx >= 0) {
-      var hdr = rows[hidx] || [];
-      var nums = [];
-      for (var j = 1; j < hdr.length; j++) {
-        var n = parseInt(hdr[j], 10);
-        if (!isNaN(n) && n >= 1 && n <= 31) nums.push(n);
-      }
-      if (nums.length) ndays = Math.max.apply(null, nums);
+    var hdr = rows[sections[s].headerRow] || [];
+    var year = null;
+    var ym = String(hdr[0] || "").match(/(\d{4})年/);
+    if (ym) year = parseInt(ym[1], 10);
+    var nums = [];
+    for (var j = 1; j < hdr.length; j++) {
+      var n = parseInt(hdr[j], 10);
+      if (!isNaN(n) && n >= 1 && n <= 31) nums.push(n);
     }
-    taicho[month] = {cells: cells, ndays: ndays};
+    if (nums.length) ndays = Math.max.apply(null, nums);
+    order.push(month);
+    taicho[month] = {cells: cells, ndays: ndays, year: year};
   }
-  return taicho;
+  return {order: order, months: taicho};
 }
 
 function escapeHtml(s) {
@@ -124,12 +139,9 @@ function cellLines(value) {
 
 /** สร้าง HTML 台帳 4 เดือน — port จาก render_html() ใน taicho_pdf.py. */
 function renderHtml(taicho) {
-  var months = [];
-  var keys = Object.keys(taicho).map(Number).sort(function (a, b) { return a - b; });
-  for (var k = 0; k < keys.length; k++) {
-    if (keys[k] >= MONTH_START && keys[k] < MONTH_START + MONTH_COUNT) months.push(keys[k]);
-  }
-  if (!months.length) months = keys.slice(0, MONTH_COUNT);  // rotate ข้ามปี (12-03)
+  // ใช้ลำดับจริงจากชีต (readTaicho().order) — เดิมกรอง MONTH_START=9 ⇒ หน้าต่าง 10月-1月
+  // เหลือแค่ 10/11/12 และ 1月 หายทั้งเดือน (บั๊กจริง 1 ต.ค. 69 — ตรงกับไฟล์ PDF ที่พี่เจเห็น)
+  var months = taicho.order.slice(0, MONTH_COUNT);
 
   var p = [];
   p.push('<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">');
@@ -174,12 +186,14 @@ function renderHtml(taicho) {
 
   for (var i = 0; i < months.length; i++) {
     var m = months[i];
-    var ndays = taicho[m].ndays;
-    var cells = taicho[m].cells;
+    var ndays = taicho.months[m].ndays;
+    var cells = taicho.months[m].cells;
     var hdr = HEADER_COLOR[ndays === 30 ? 30 : 31][MONTH_COLOR_IDX[m] || 0];
+    // ปีจริงของเดือนนั้นจาก header ในชีต — เดิมใช้ YEAR=2026 ตายตัว ⇒ 1月 ของหน้าต่าง 10月-1月 ผิดปี
+    var yearLabel = (taicho.months[m].year ? taicho.months[m].year + '年 ' : '') + m + '月';
     p.push('<div class="month"><table>');
     p.push('<tr class="title-row"><td colspan="' + (ndays + 1) + '" style="--hdr:' + hdr + '">' +
-           YEAR + '年 ' + m + '月</td></tr>');
+           yearLabel + '</td></tr>');
     var daysHtml = "";
     for (var d = 1; d <= ndays; d++) daysHtml += "<td>" + d + "</td>";
     p.push('<tr class="day-row"><td></td>' + daysHtml + '</tr>');

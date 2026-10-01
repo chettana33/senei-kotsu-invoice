@@ -24,7 +24,7 @@ HEADER_COLOR = {
     31: ["#ffe5ea", "#fff2e7", "#ffe3c9"],  # ชมพู, ส้ม, เหลืองอ่อน
 }
 # เดือน -> ดัชนีสี (สลับให้ 2 เดือนติดกันไม่ซ้ำ; 4 เดือนใน tab ต้องต่างกัน)
-MONTH_COLOR_IDX = {9: 0, 10: 0, 11: 1, 12: 1}
+MONTH_COLOR_IDX = {9: 0, 10: 0, 11: 1, 12: 1, 1: 2, 2: 2, 3: 1, 4: 0}
 
 
 def _html_escape(s):
@@ -53,15 +53,17 @@ def _cell_lines(value):
     return lines
 
 
-def render_html(taicho, mmdd, month_start=9, month_count=4):
-    """สร้าง HTML 台帳 4 เดือน (rotate จาก month_start). คืน str.
+def render_html(taicho, mmdd, month_count=4):
+    """สร้าง HTML 台帳 4 เดือน **ตามหน้าต่างจริงในชีต** (เรียงตามลำดับแถว). คืน str.
+
+    ⚠️ 1 ต.ค. 69 (บั๊กจริง — ตรวจกับไฟล์ที่พี่เจเห็นแล้ว): เดิมกรอง
+    `month_start <= m < month_start + month_count` ด้วย month_start=9 ⇒ หน้าต่าง [10,11,12,1]
+    ผ่านแค่ 10/11/12 ⇒ **PDF (และเว็บแอป) ขาด 1月 ทั้งเดือน** — ไฟล์ `(1001)` มีแค่ 3 เดือน
+    ใช้ `tg.window_months()` (= ลำดับจริงในชีต) แทนการเดาจากเลขเดือน
 
     ช่องวันกว้างตามเนื้อหา (table-layout auto) + แต่ละบรรทัด white-space nowrap
     → '🔷13:00 1H🟢' อยู่บรรทัดเดียว ไม่ตัดกลาง (พี่เจขอ 1 ก.ย. 69)."""
-    months = sorted(m for m in taicho.keys() if month_start <= m < month_start + month_count)
-    if not months:
-        # tab rotate ข้ามปี (เช่น 12-03): เอาเดือนที่มี
-        months = sorted(taicho.keys())[:month_count]
+    months = tg.window_months(taicho)[:month_count]
     parts = []
     parts.append(f"""<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8">
@@ -107,7 +109,11 @@ def render_html(taicho, mmdd, month_start=9, month_count=4):
         cells = taicho[m].get("cells", {})
         hdr = HEADER_COLOR[30 if ndays == 30 else 31][MONTH_COLOR_IDX.get(m, 0)]
         parts.append(f'<div class="month"><table>')
-        parts.append(f'<tr class="title-row"><td colspan="{ndays + 1}" style="--hdr:{hdr}">2026年 {m}月</td></tr>')
+        # ปีจริงของเดือนนั้น (จาก header ในชีต) — เดิม hardcode '2026年' ทุกเดือน ⇒ 1月 ของหน้าต่าง
+        # 10月-1月 จะพิมพ์เป็น 2026 ผิด (review มุมคนนอก 1 ต.ค. 69)
+        year = taicho[m].get("year")
+        label = f"{year}年 {m}月" if year else f"{m}月"
+        parts.append(f'<tr class="title-row"><td colspan="{ndays + 1}" style="--hdr:{hdr}">{label}</td></tr>')
         # แถววัน
         days_html = "".join(f"<td>{d}</td>" for d in range(1, ndays + 1))
         parts.append(f'<tr class="day-row"><td></td>{days_html}</tr>')

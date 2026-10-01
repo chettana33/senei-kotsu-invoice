@@ -347,6 +347,7 @@ def rotate_table_if_needed():
         if new_gid is None:
             raise RuntimeError("duplicateSheet ล้มเหลว")
 
+        renamed = False
         try:
             # 2) ลบ block เดือนแรกใน tab ใหม่
             _sheets_batch_by_gid(new_gid, [{"deleteDimension": {
@@ -392,6 +393,7 @@ def rotate_table_if_needed():
             # 5) rename tab ใหม่ (ก่อน format — จะได้อ่าน header จริงผ่าน find_main_tab)
             _sheets_batch_by_gid(new_gid, [{"updateSheetProperties": {
                 "properties": {"sheetId": new_gid, "title": new_title}, "fields": "title"}}])
+            renamed = True  # ตั้งแต่บรรทัดนี้ = แท็บนี้คือแท็บ台帳 จริง — rollback ต้องไม่ลบ
 
             # 6) format เดือนใหม่: สี header (30/31 วัน), entry height 300, แถบเทา, ซ่อนแถวหลัง block
             #    duplicate copy hidden เก่า (r71+ ของ tab เดิม) + ลบ block บน = hidden เลื่อนขึ้น -> unhide ทั้ง tab ก่อน
@@ -441,6 +443,12 @@ def rotate_table_if_needed():
                             "fields": "userEnteredValue"}})
             _sheets_batch_by_gid(new_gid, reqs)
         except Exception:
+            # rollback ได้เฉพาะตอน "ยังไม่ rename" — หลัง rename แท็บนี้คือแท็บ台帳 จริง (ห้ามลบ)
+            # (review มุมคนนอก 1 ต.ค. 69: เดิมลบ new_gid ทุกกรณี ⇒ error ตอน format ท้าย ๆ = ลบแท็บจริงทิ้ง)
+            if renamed:
+                log.warning("rotate: ล้มหลัง rename — เก็บแท็บ %s ไว้ (ข้อมูลครบ · format อาจไม่ครบ)",
+                            new_title)
+                raise
             # ห้ามทิ้งแท็บขยะไว้: ถ้าค้าง ชื่อซ้ำจะทำให้ rotate รอบถัดไปพังทั้งรอบ (เคสจริง 1 ต.ค. 69)
             try:
                 _sheets_batch_by_gid(new_gid, [{"deleteSheet": {"sheetId": new_gid}}])
@@ -456,12 +464,17 @@ def rotate_table_if_needed():
 def run(dry_run=False):
     state = load_state()
     if not dry_run:
+        # แยก try: rotate ล้ม (เช่น 1 ต.ค. 69) ต้องไม่ทำให้การล้าง flag 🟢/🟡 ถูกข้ามทั้งวัน
+        # (review มุมคนนอก 1 ต.ค. 69 — อาการที่ 2 ของ incident)
         try:
             rotate_table_if_needed()
-            clear_stale_flags(state)
-            save_state(state)
         except Exception as e:
-            log.error("rotate/clear flags failed: %s", e)
+            log.error("rotate failed: %s", e)
+        try:
+            clear_stale_flags(state)
+        except Exception as e:
+            log.error("clear flags failed: %s", e)
+        save_state(state)
     forms = find_all_forms()
     bootstrap_state(state, forms)
     new_forms = [(mmdd, path) for mmdd, path in forms

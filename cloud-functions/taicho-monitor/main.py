@@ -218,16 +218,40 @@ def list_forms(token):
 
 # ---------------- sheets 台帳 ----------------
 
-def find_main_tab():
-    d = _api("GET", f"{SHEETS_API}/{SHEET_ID}?fields=sheets(properties(title,sheetId))")
+TAB_RE = re.compile(r"^千栄1568 (\d+)月-(\d+)月(?:\((\d{4})\))?\s*$")
+
+
+def main_tab_key(title):
+    """คีย์เรียงแท็บ台帳 หลัก = (ปีที่ "เดือนแรก" เริ่ม, เดือนแรก) — คืน None = ไม่ใช่แท็บหลัก
+    (mirror tools/taicho_gsheets.py)
+
+    ทำไมต้องมีปี (review มุมคนนอก 1 ต.ค. 69): ชื่อ tab ลงท้ายด้วยปีของ "เดือนสุดท้าย" ⇒
+    `10月-1月(2027)` เริ่ม ต.ค. 2026 · ถ้าเลือกด้วย max M0 (เดิม) พอขึ้นปีใหม่ `1月-4月(2027)` (M0=1)
+    จะแพ้ `12月-3月(2027)` (M0=12) ⇒ เลือกแท็บเก่า → rotate วนซ้ำ + HTTP 400 ทั้งวันซ้ำรอย 1 ต.ค. 69"""
+    m = TAB_RE.match(title)
+    if not m:
+        return None
+    m0, m3 = int(m.group(1)), int(m.group(2))
+    year = int(m.group(3)) if m.group(3) else 0
+    start_year = year - 1 if (year and m0 > m3) else year
+    return (start_year, m0)
+
+
+def pick_main_tab(titles):
+    """เลือกชื่อแท็บ台帳 หลักจากรายชื่อแท็บ (pure — test ได้) · คืน None ถ้าไม่พบ"""
     best = None
-    for s in d["sheets"]:
-        m = re.match(r"^千栄1568 (\d+)月-\d+月", s["properties"]["title"])
-        if m:
-            m0 = int(m.group(1))
-            if best is None or m0 > best[0]:
-                best = (m0, s["properties"]["title"], s["properties"]["sheetId"])
-    return (best[1], best[2]) if best else (None, None)
+    for t in titles:
+        k = main_tab_key(t)
+        if k is not None and (best is None or k > best[0]):
+            best = (k, t)
+    return best[1] if best else None
+
+
+def find_main_tab():
+    """คืน (title, gid) ของแท็บ台帳 หลัก (ตัวที่หน้าต่างใหม่สุด) หรือ (None, None)"""
+    tabs = list_tabs()
+    name = pick_main_tab(tabs.keys())
+    return (name, tabs[name]) if name else (None, None)
 
 def window_months(t):
     """เดือนของหน้าต่าง 4 เดือน เรียงตาม **ลำดับแถวในชีต** เช่น [10, 11, 12, 1]
@@ -288,6 +312,7 @@ def delete_stale_tmp_tab():
     sid = list_tabs().get(TMP_TAB_TITLE)
     if sid is None:
         return False
+    print(f"ลบแท็บค้าง {TMP_TAB_TITLE!r} sheetId={sid} (ชื่อซ้ำทำให้ rotate duplicate ไม่ได้)", flush=True)
     batch_update([{"deleteSheet": {"sheetId": sid}}])
     return True
 
@@ -687,6 +712,7 @@ def rotate_table_if_needed():
             new_gid = p.get("sheetId")
         if new_gid is None:
             raise RuntimeError("duplicateSheet failed")
+        renamed = False
         try:
             batch_update([{"deleteDimension": {"range": {"sheetId": new_gid, "dimension": "ROWS",
                             "startIndex": first_header - 1, "endIndex": first_header - 1 + first_block}}}])
@@ -715,6 +741,7 @@ def rotate_table_if_needed():
                                   [LEGEND_ROWS[2]] + [None] * 32]})
             batch_update([{"updateSheetProperties": {"properties": {"sheetId": new_gid, "title": new_title},
                                                      "fields": "title"}}])
+            renamed = True  # ตั้งแต่บรรทัดนี้ = แท็บนี้คือแท็บ台帳 จริง — rollback ต้องไม่ลบ
             reqs = [
                 {"updateDimensionProperties": {"range": {"sheetId": new_gid, "dimension": "ROWS",
                             "startIndex": 0, "endIndex": 956},
@@ -756,6 +783,13 @@ def rotate_table_if_needed():
             batch_update(reqs)
             print(f"rotate: {new_title}", flush=True)
         except Exception:
+            # rollback ได้เฉพาะตอน "ยังไม่ rename" — หลัง rename แท็บนี้คือแท็บ台帳 จริง (ห้ามลบเด็ดขาด)
+            # (review มุมคนนอก 1 ต.ค. 69: เดิมลบ new_gid ทุกกรณี ⇒ 429 ตอน format ท้าย ๆ = ลบแท็บจริงทิ้ง
+            #  แล้วเหลือแท็บชื่อจริงค้างที่ delete_stale_tmp_tab ลบไม่ได้ = ชื่อชนถาวร)
+            if renamed:
+                print(f"rotate: ล้มหลัง rename — เก็บแท็บ {new_title} ไว้ (ข้อมูล/หน้าต่างครบ · "
+                      "format อาจไม่ครบ) แล้วรายงาน error ต่อ", flush=True)
+                raise
             # ห้ามทิ้งแท็บขยะไว้: ชื่อซ้ำจะทำให้ rotate รอบถัดไปพังทั้งรอบ (เคสจริง 1 ต.ค. 69)
             try:
                 batch_update([{"deleteSheet": {"sheetId": new_gid}}])
@@ -848,11 +882,16 @@ def run_flow():
         # อ่าน state ไม่ได้ = หยุดทั้งรอบ (ไม่ apply / ไม่ LINE / ไม่เขียน state ทับ) — 10 ก.ย. 69
         print(f"ABORT: {e} — ไม่ประมวลผลรอบนี้ (กัน bootstrap ผิด = apply/LINE ซ้ำ)", flush=True)
         return "state read failed"
+    # แยก try: rotate ล้ม (เช่น 1 ต.ค. 69) ต้องไม่ทำให้ "ล้าง flag 🟢/🟡 ของวันก่อน" ถูกข้ามทั้งวัน
+    # (review มุมคนนอก 1 ต.ค. 69 — อาการที่ 2 ของ incident ยังไม่ถูกแก้ถ้ายังรวม try เดียวกัน)
     try:
         rotate_table_if_needed()
+    except Exception as e:
+        print(f"rotate failed: {e}", flush=True)
+    try:
         clear_stale_flags(state)
     except Exception as e:
-        print(f"rotate/clear failed: {e}", flush=True)
+        print(f"clear flags failed: {e}", flush=True)
     forms = list_forms(token)
     procd = state.setdefault("processed", [])
     if not isinstance(state.get("proc_mt"), dict):
