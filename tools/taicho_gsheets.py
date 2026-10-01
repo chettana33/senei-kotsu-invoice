@@ -81,6 +81,36 @@ def find_main_tab():
         return best[1], best[2]
     return None, None
 
+TMP_TAB_TITLE = "千栄1568 tmp"  # ชื่อแท็บชั่วคราวของ rotate (ห้ามตั้งชื่ออื่น)
+
+
+def list_tabs():
+    """คืน {title: sheetId} ของทุกแท็บในไฟล์ master — ใช้หาแท็บชั่วคราวที่ค้าง"""
+    tok = get_token()
+    url = (f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}"
+           "?fields=sheets(properties(title,sheetId))")
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"})
+    d = json.load(urllib.request.urlopen(req, timeout=30))
+    return {s["properties"]["title"]: s["properties"]["sheetId"] for s in d["sheets"]}
+
+
+def delete_stale_tmp_tab():
+    """ลบแท็บชั่วคราว `千栄1568 tmp` ที่ค้างจาก rotate รอบที่ล้ม — คืน True ถ้าได้ลบ
+
+    ปลอดภัยโดยออกแบบ: ลบได้เฉพาะชื่อนี้เท่านั้น (แท็บ台帳/ประวัติไม่ถูกแตะ) · จำเป็นเพราะ
+    ชื่อซ้ำทำให้ `duplicateSheet` ตอบ 400 (เคสจริง 1 ต.ค. 69 ⇒ rotate พังทุก 5 นาทีทั้งวัน)"""
+    sid = list_tabs().get(TMP_TAB_TITLE)
+    if sid is None:
+        return False
+    tok = get_token()
+    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}:batchUpdate"
+    body = json.dumps({"requests": [{"deleteSheet": {"sheetId": sid}}]}).encode()
+    req = urllib.request.Request(url, data=body, method="POST",
+                                 headers={"Authorization": f"Bearer {tok}",
+                                          "Content-Type": "application/json"})
+    urllib.request.urlopen(req, timeout=30)
+    return True
+
 
 def sheets_get(values_range):
     tok = get_token()
@@ -145,6 +175,49 @@ def month_sections(rows, base_row):
                 # header แถว = base_row + i; entry แถว = header + 3
                 sections[int(m.group(1))] = base_row + i + 3
     return sections
+
+MONTH_BLOCK = 16  # แถวต่อ 1 เดือนในตาราง台帳 (header 1 + ว่าง 2 + entry 1 + ว่าง 1 + sub 1 + ว่าง 1 + legend 3 + ว่าง 6)
+
+
+def window_months(t):
+    """เดือนของหน้าต่าง 4 เดือน เรียงตาม **ลำดับแถวในชีต** เช่น [10, 11, 12, 1]
+
+    ห้ามใช้ `sorted(t.keys())` — 1 ต.ค. 69 (บั๊กจริง): หน้าต่าง 10月-1月 เรียงเป็น [1,10,11,12]
+    ⇒ เดือนแรกกลายเป็น 1月 → ด่าน 'เดือนแรก == เดือนปัจจุบัน' ไม่จริง → rotate วนซ้ำไม่จบ
+    (HTTP 400 ทุกรอบ 5 นาที + ทิ้งแท็บ `千栄1568 tmp` ค้างในไฟล์ master)"""
+    return [m for m, _ in sorted(t.items(), key=lambda kv: kv[1]["row"])]
+
+
+def rotate_plan(t, today):
+    """pure logic ของ rotate รายเดือน (test ได้ ไม่แตะ network — mirror cloud main.py)
+
+    t = {month: {"row": <entry row>, ...}} · today = datetime.date
+    คืน None = ไม่ต้อง rotate (เดือนแรกของหน้าต่าง == เดือนปัจจุบัน)
+    คืน dict = ต้อง rotate 1 รอบ (ใช้ค่าจาก plan แทนคำนวณซ้ำหน้างาน)"""
+    months = window_months(t)
+    if not months:
+        return None
+    first, last = months[0], months[-1]
+    if first == today.month:
+        return None
+    first_header = t[first]["row"] - 3
+    last_header = t[last]["row"] - 3
+    new_month = (last % 12) + 1
+    # ปีของ "เดือนใหม่" = ปีของเดือนสุดท้ายของหน้าต่างใหม่ (มติพี่เจ 1 ต.ค. 69)
+    # เดิม `2027 if new_month == 1 else 2026` → 1 พ.ย. 69 จะเขียนหัวเดือน "2026年 2月" ผิด
+    # `>=` (ไม่ใช่ `>`): เคสตามไม่ทัน (first อยู่ก่อนเดือนปัจจุบัน) เดือนใหม่ = เดือนปัจจุบัน = ปีนี้
+    new_year = today.year if new_month >= today.month else today.year + 1
+    second_header = (t[months[1]]["row"] - 3) if len(months) > 1 else first_header + MONTH_BLOCK
+    prev_header = (t[months[-2]]["row"] - 3) if len(months) > 1 else last_header - MONTH_BLOCK
+    m0 = (first % 12) + 1
+    return {
+        "months": months, "first": first, "last": last,
+        "first_header": first_header, "last_header": last_header,
+        "first_block": second_header - first_header,
+        "last_block": last_header - prev_header,
+        "new_month": new_month, "new_year": new_year,
+        "title": f"千栄1568 {m0}月-{new_month}月({new_year})",
+    }
 
 
 def col_for_day(day):

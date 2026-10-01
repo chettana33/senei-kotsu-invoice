@@ -301,7 +301,11 @@ def rotate_table_if_needed():
     """ข้อ 3: ตาราง 4 เดือนเลื่อน — วันที่ 1 ของเดือน และเดือนแรกของตาราง != เดือนปัจจุบัน
     → **สร้าง tab ใหม่** `千栄1568 <M0>月-<M3>月(<ปี>)` (copy โครงสร้าง/ข้อมูล/format จาก tab ล่าสุด,
     ลบเดือนแรก, เพิ่มเดือนใหม่ต่อท้าย) — **tab เก่าเก็บไว้เป็นประวัติ ไม่แตะ** (พี่เจสั่ง 31 ส.ค. 69)
-    วนจนกว่าเดือนแรกของ tab ล่าสุด == เดือนปัจจุบัน (ครอบค้างหลายเดือน)"""
+    วนจนกว่าเดือนแรกของ tab ล่าสุด == เดือนปัจจุบัน (ครอบค้างหลายเดือน)
+
+    ⚠️ 1 ต.ค. 69 (บั๊กจริง): เดือนในหน้าต่างต้องเรียงตาม "ลำดับแถวในชีต" — `sorted()` วาง 1月 ไว้หน้าสุด
+    (10月-1月 → [1,10,11,12]) ⇒ ด่านจบลูปไม่จริง → rotate วนซ้ำไม่จบ + HTTP 400 ทุก 5 นาทีทั้งวัน
+    + ทิ้งแท็บ `千栄1568 tmp` ค้าง (ชื่อซ้ำ = duplicate ไม่ได้อีกเลย) · แผน/เหตุผลอยู่ใน `tg.rotate_plan`"""
     today = date.fromisoformat(os.environ.get("TEST_DATE", date.today().isoformat()))
     if today.day != 1:
         return False
@@ -313,30 +317,22 @@ def rotate_table_if_needed():
         t = tg.read_taicho()
         if not t:
             break
-        months = sorted(t.keys())
-        first = months[0]
-        last = months[-1]
-        if first == today.month:
+        plan = tg.rotate_plan(t, today)
+        if not plan:
             break
         rotated = True
-        first_entry = t[first]["row"]
-        first_header = first_entry - 3
-        last_header = t[last]["row"] - 3
-        new_month = (last % 12) + 1
-        new_year = 2027 if new_month == 1 else 2026
-        year_label = 2027 if new_month < last else 2026  # ปีของเดือนสุดท้ายในชื่อ tab (ข้ามปีเมื่อ wrap)
-        m0 = (first % 12) + 1
-        m3 = new_month
-        new_title = f"千栄1568 {m0}月-{m3}月({year_label})"
+        first, new_month, new_year = plan["first"], plan["new_month"], plan["new_year"]
+        first_header, first_block = plan["first_header"], plan["first_block"]
+        last_header, last_block = plan["last_header"], plan["last_block"]
+        new_title = plan["title"]
 
-        # block จริงของเดือนแรก/สุดท้าย
-        second_header = (t[months[1]]["row"] - 3) if len(months) > 1 else first_header + MONTH_BLOCK
-        first_block = second_header - first_header
-        prev_header = (t[months[-2]]["row"] - 3) if len(months) > 1 else last_header - MONTH_BLOCK
-        last_block = last_header - prev_header
+        # 0) เก็บกวาดแท็บชั่วคราวที่ค้างจากรอบที่ล้ม (ชื่อซ้ำ → duplicateSheet ตอบ 400)
+        if tg.delete_stale_tmp_tab():
+            log.warning("rotate: ลบแท็บ %s ที่ค้างจากรอบก่อน (ชื่อซ้ำ = duplicate ไม่ได้)",
+                        tg.TMP_TAB_TITLE)
 
         # 1) duplicate tab ล่าสุด -> tab ใหม่ (ชื่อชั่วคราวกัน regex จับก่อน rename)
-        tmp_title = "千栄1568 tmp"
+        tmp_title = tg.TMP_TAB_TITLE
         req = urllib.request.Request(
             f"https://sheets.googleapis.com/v4/spreadsheets/{tg.SHEET_ID}:batchUpdate",
             data=json.dumps({"requests": [{"duplicateSheet": {
@@ -351,98 +347,108 @@ def rotate_table_if_needed():
         if new_gid is None:
             raise RuntimeError("duplicateSheet ล้มเหลว")
 
-        # 2) ลบ block เดือนแรกใน tab ใหม่
-        _sheets_batch_by_gid(new_gid, [{"deleteDimension": {
-            "range": {"sheetId": new_gid, "dimension": "ROWS",
-                      "startIndex": first_header - 1, "endIndex": first_header - 1 + first_block}}}])
-
-        # 3) หา header จริงของเดือนสุดท้ายใน tab ใหม่ (หลังลบ — อ่านค่า ไม่คำนวณ กัน offset)
-        #    values API ไม่มี sheet name = ใช้ sheet แรก (tmp อยู่ index 0)
-        tok_now = tg.get_token()
-        a_url = f"https://sheets.googleapis.com/v4/spreadsheets/{tg.SHEET_ID}/values/A1:A80?majorDimension=ROWS"
-        a_req = urllib.request.Request(a_url, headers={"Authorization": f"Bearer {tok_now}"})
-        a_rows = json.loads(urllib.request.urlopen(a_req, timeout=30).read().decode()).get("values", [])
-        last_hdr_1based = None
-        for i, row in enumerate(a_rows, start=1):
-            a = row[0] if row else ""
-            if re.search(r"\d+月", str(a)):
-                last_hdr_1based = i
-        if last_hdr_1based is None:
-            raise RuntimeError("หา header เดือนสุดท้ายใน tab ใหม่ไม่เจอ")
-        dest = last_hdr_1based - 1 + last_block          # 0-based: ท้าย block สุดท้าย (hdr 0-based + ขนาด block)
-        src = dest - last_block                          # 0-based: เริ่ม block สุดท้าย (ก่อน block ใหม่)
-        _sheets_batch_by_gid(new_gid, [{"copyPaste": {
-            "source": {"sheetId": new_gid, "startRowIndex": src, "endRowIndex": dest,
-                       "startColumnIndex": 0, "endColumnIndex": 33},
-            "destination": {"sheetId": new_gid, "startRowIndex": dest, "endColumnIndex": 33},
-            "pasteType": "PASTE_FORMAT"}}])
-
-        # 4) เขียนค่าเดือนใหม่ (hdr = dest+1, entry +3, sub +5, legend +7..9)
-        h = dest + 1
-        days = list(range(1, 32))
-        _tab_update_tab(new_gid, f"A{h}:AF{h + 9}", [
-            [f"{new_year}年 {new_month}月"] + days,
-            [None] * 33, [None] * 33,
-            ["千栄1568"] + [None] * 32,
-            [None] * 33,
-            [None] + days,
-            [None] * 33,
-            ["変更は🟡"] + [None] * 32,
-            ["新規は🟢"] + [None] * 32,
-            ["ホ＝ホテル（橙）　空＝空港（青）　左=出発　右=行先"] + [None] * 32,
-        ])
-
-        # 5) rename tab ใหม่ (ก่อน format — จะได้อ่าน header จริงผ่าน find_main_tab)
-        _sheets_batch_by_gid(new_gid, [{"updateSheetProperties": {
-            "properties": {"sheetId": new_gid, "title": new_title}, "fields": "title"}}])
-
-        # 6) format เดือนใหม่: สี header (30/31 วัน), entry height 300, แถบเทา, ซ่อนแถวหลัง block
-        #    duplicate copy hidden เก่า (r71+ ของ tab เดิม) + ลบ block บน = hidden เลื่อนขึ้น -> unhide ทั้ง tab ก่อน
-        t_new = tg.read_taicho()  # find_main_tab เลือก tab ใหม่ (M0 สูงสุด)
-        reqs = [
-            {"updateDimensionProperties": {
-                "range": {"sheetId": new_gid, "dimension": "ROWS", "startIndex": 0, "endIndex": 956},
-                "properties": {"hiddenByUser": False}, "fields": "hiddenByUser"}},
-            {"updateDimensionProperties": {
+        try:
+            # 2) ลบ block เดือนแรกใน tab ใหม่
+            _sheets_batch_by_gid(new_gid, [{"deleteDimension": {
                 "range": {"sheetId": new_gid, "dimension": "ROWS",
-                          "startIndex": h + 2, "endIndex": h + 3},
-                "properties": {"pixelSize": 300}, "fields": "pixelSize"}},
-            {"repeatCell": {
-                "range": {"sheetId": new_gid, "startRowIndex": h + 10, "endRowIndex": h + 11,
-                          "startColumnIndex": 0, "endColumnIndex": 33},
-                "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.4, "green": 0.4, "blue": 0.4}}},
-                "fields": "userEnteredFormat.backgroundColor"}},
-            {"repeatCell": {
-                "range": {"sheetId": new_gid, "startRowIndex": h + 13, "endRowIndex": h + 14,
-                          "startColumnIndex": 0, "endColumnIndex": 33},
-                "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.4, "green": 0.4, "blue": 0.4}}},
-                "fields": "userEnteredFormat.backgroundColor"}},
-            {"updateDimensionProperties": {
-                "range": {"sheetId": new_gid, "dimension": "ROWS",
-                          "startIndex": h + 15, "endIndex": 956},
-                "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}},
-        ]
-        # สี header ทุกเดือนใน tab ใหม่ (ตาม 30/31 วัน)
-        m_list = list(t_new.keys())
-        bottom = m_list[-1]
-        for m, info in t_new.items():
-            hdr = info["row"] - 3
-            r, g, b = HEADER_COLOR.get(m, (0.9, 0.9, 0.9))
-            reqs.append({"repeatCell": {
-                "range": {"sheetId": new_gid, "startRowIndex": hdr - 1, "endRowIndex": hdr,
-                          "startColumnIndex": 0, "endColumnIndex": 33},
-                "cell": {"userEnteredFormat": {"backgroundColor": {"red": r, "green": g, "blue": b}}},
-                "fields": "userEnteredFormat.backgroundColor"}})
-            # legend ชุดเดียวที่บล็อกล่างสุด (พี่เจสั่ง 5 ก.ย. 69)
-            if m != bottom:
-                base = info["row"] + 3
-                for rr in range(base, base + 3):
-                    reqs.append({"updateCells": {
-                        "range": {"sheetId": new_gid, "startRowIndex": rr, "endRowIndex": rr + 1,
-                                  "startColumnIndex": 0, "endColumnIndex": 1},
-                        "rows": [{"values": [{"userEnteredValue": {"stringValue": ""}}]}],
-                        "fields": "userEnteredValue"}})
-        _sheets_batch_by_gid(new_gid, reqs)
+                          "startIndex": first_header - 1, "endIndex": first_header - 1 + first_block}}}])
+
+            # 3) หา header จริงของเดือนสุดท้ายใน tab ใหม่ (หลังลบ — อ่านค่า ไม่คำนวณ กัน offset)
+            #    values API ไม่มี sheet name = ใช้ sheet แรก (tmp อยู่ index 0)
+            tok_now = tg.get_token()
+            a_url = f"https://sheets.googleapis.com/v4/spreadsheets/{tg.SHEET_ID}/values/A1:A80?majorDimension=ROWS"
+            a_req = urllib.request.Request(a_url, headers={"Authorization": f"Bearer {tok_now}"})
+            a_rows = json.loads(urllib.request.urlopen(a_req, timeout=30).read().decode()).get("values", [])
+            last_hdr_1based = None
+            for i, row in enumerate(a_rows, start=1):
+                a = row[0] if row else ""
+                if re.search(r"\d+月", str(a)):
+                    last_hdr_1based = i
+            if last_hdr_1based is None:
+                raise RuntimeError("หา header เดือนสุดท้ายใน tab ใหม่ไม่เจอ")
+            dest = last_hdr_1based - 1 + last_block          # 0-based: ท้าย block สุดท้าย (hdr 0-based + ขนาด block)
+            src = dest - last_block                          # 0-based: เริ่ม block สุดท้าย (ก่อน block ใหม่)
+            _sheets_batch_by_gid(new_gid, [{"copyPaste": {
+                "source": {"sheetId": new_gid, "startRowIndex": src, "endRowIndex": dest,
+                           "startColumnIndex": 0, "endColumnIndex": 33},
+                "destination": {"sheetId": new_gid, "startRowIndex": dest, "endColumnIndex": 33},
+                "pasteType": "PASTE_FORMAT"}}])
+
+            # 4) เขียนค่าเดือนใหม่ (hdr = dest+1, entry +3, sub +5, legend +7..9)
+            h = dest + 1
+            days = list(range(1, 32))
+            _tab_update_tab(new_gid, f"A{h}:AF{h + 9}", [
+                [f"{new_year}年 {new_month}月"] + days,
+                [None] * 33, [None] * 33,
+                ["千栄1568"] + [None] * 32,
+                [None] * 33,
+                [None] + days,
+                [None] * 33,
+                ["変更は🟡"] + [None] * 32,
+                ["新規は🟢"] + [None] * 32,
+                ["ホ＝ホテル（橙）　空＝空港（青）　左=出発　右=行先"] + [None] * 32,
+            ])
+
+            # 5) rename tab ใหม่ (ก่อน format — จะได้อ่าน header จริงผ่าน find_main_tab)
+            _sheets_batch_by_gid(new_gid, [{"updateSheetProperties": {
+                "properties": {"sheetId": new_gid, "title": new_title}, "fields": "title"}}])
+
+            # 6) format เดือนใหม่: สี header (30/31 วัน), entry height 300, แถบเทา, ซ่อนแถวหลัง block
+            #    duplicate copy hidden เก่า (r71+ ของ tab เดิม) + ลบ block บน = hidden เลื่อนขึ้น -> unhide ทั้ง tab ก่อน
+            t_new = tg.read_taicho()  # find_main_tab เลือก tab ใหม่ (M0 สูงสุด)
+            reqs = [
+                {"updateDimensionProperties": {
+                    "range": {"sheetId": new_gid, "dimension": "ROWS", "startIndex": 0, "endIndex": 956},
+                    "properties": {"hiddenByUser": False}, "fields": "hiddenByUser"}},
+                {"updateDimensionProperties": {
+                    "range": {"sheetId": new_gid, "dimension": "ROWS",
+                              "startIndex": h + 2, "endIndex": h + 3},
+                    "properties": {"pixelSize": 300}, "fields": "pixelSize"}},
+                {"repeatCell": {
+                    "range": {"sheetId": new_gid, "startRowIndex": h + 10, "endRowIndex": h + 11,
+                              "startColumnIndex": 0, "endColumnIndex": 33},
+                    "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.4, "green": 0.4, "blue": 0.4}}},
+                    "fields": "userEnteredFormat.backgroundColor"}},
+                {"repeatCell": {
+                    "range": {"sheetId": new_gid, "startRowIndex": h + 13, "endRowIndex": h + 14,
+                              "startColumnIndex": 0, "endColumnIndex": 33},
+                    "cell": {"userEnteredFormat": {"backgroundColor": {"red": 0.4, "green": 0.4, "blue": 0.4}}},
+                    "fields": "userEnteredFormat.backgroundColor"}},
+                {"updateDimensionProperties": {
+                    "range": {"sheetId": new_gid, "dimension": "ROWS",
+                              "startIndex": h + 15, "endIndex": 956},
+                    "properties": {"hiddenByUser": True}, "fields": "hiddenByUser"}},
+            ]
+            # สี header ทุกเดือนใน tab ใหม่ (ตาม 30/31 วัน)
+            m_list = list(t_new.keys())
+            bottom = m_list[-1]
+            for m, info in t_new.items():
+                hdr = info["row"] - 3
+                r, g, b = HEADER_COLOR.get(m, (0.9, 0.9, 0.9))
+                reqs.append({"repeatCell": {
+                    "range": {"sheetId": new_gid, "startRowIndex": hdr - 1, "endRowIndex": hdr,
+                              "startColumnIndex": 0, "endColumnIndex": 33},
+                    "cell": {"userEnteredFormat": {"backgroundColor": {"red": r, "green": g, "blue": b}}},
+                    "fields": "userEnteredFormat.backgroundColor"}})
+                # legend ชุดเดียวที่บล็อกล่างสุด (พี่เจสั่ง 5 ก.ย. 69)
+                if m != bottom:
+                    base = info["row"] + 3
+                    for rr in range(base, base + 3):
+                        reqs.append({"updateCells": {
+                            "range": {"sheetId": new_gid, "startRowIndex": rr, "endRowIndex": rr + 1,
+                                      "startColumnIndex": 0, "endColumnIndex": 1},
+                            "rows": [{"values": [{"userEnteredValue": {"stringValue": ""}}]}],
+                            "fields": "userEnteredValue"}})
+            _sheets_batch_by_gid(new_gid, reqs)
+        except Exception:
+            # ห้ามทิ้งแท็บขยะไว้: ถ้าค้าง ชื่อซ้ำจะทำให้ rotate รอบถัดไปพังทั้งรอบ (เคสจริง 1 ต.ค. 69)
+            try:
+                _sheets_batch_by_gid(new_gid, [{"deleteSheet": {"sheetId": new_gid}}])
+                log.warning("rotate: rollback ลบแท็บชั่วคราวแล้ว (rotate ล้มกลางทาง)")
+            except Exception as e2:
+                log.error("rotate: rollback ไม่สำเร็จ — ต้องลบแท็บ %s เองด้วยมือ: %s",
+                          tmp_title, e2)
+            raise
         log.info("rotate: สร้าง tab ใหม่ %s (ลบ %d月, เพิ่ม %d年%d月)", new_title, first, new_year, new_month)
     return rotated
 
