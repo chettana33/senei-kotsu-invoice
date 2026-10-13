@@ -423,9 +423,21 @@ def fmt_time(c):
     return None
 
 
+KEIYU_CANCEL_RE = re.compile(r"経由\s*(?:なし|無し)")
+
+
 def hours_from(keiyu):
+    """'AEON(2H)' -> '2H' / '成田山(1H)' -> '1H' / None
+
+    13 ต.ค. 69 (รอบ 152 · พี่เจสั่ง "แก้"): ใบเขียนยกเลิก経由地ว่า `成田山(1H)→経由なし`
+    เดิมอ่านแค่ `(1H)` ⇒ 台帳 ยังโชว์ 1H + diff ตอบ "ไม่มีความต่าง" (คำสั่งถูกกลืนเงียบ)
+    ⇒ เจอ 経由なし/経由無し = ยกเลิก経由地 คืน None · **mirror กับ tools/taicho_gsheets.py**
+    """
     if keiyu:
-        m = re.search(r"\((\d+)H\)", str(keiyu))
+        s = str(keiyu)
+        if KEIYU_CANCEL_RE.search(s):
+            return None
+        m = re.search(r"\((\d+)H\)", s)
         if m:
             return f"{m.group(1)}H"
     return None

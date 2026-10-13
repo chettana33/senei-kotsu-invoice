@@ -315,10 +315,21 @@ def fmt_time(c):
     return None
 
 
+KEIYU_CANCEL_RE = re.compile(r"経由\s*(?:なし|無し)")
+
+
 def hours_from(keiyu):
-    """'AEON(2H)' -> '2H' / '成田山(1H)' -> '1H' / None"""
+    """'AEON(2H)' -> '2H' / '成田山(1H)' -> '1H' / None
+
+    13 ต.ค. 69 (รอบ 152 · พี่เจสั่ง "แก้"): ใบขอรถเขียนยกเลิก経由地ว่า `成田山(1H)→経由なし`
+    เดิมโค้ดอ่านแค่ `(1H)` ⇒ 台帳 ยังโชว์ 1H และ diff รายงาน "ไม่มีความต่าง" (คำสั่งถูกกลืนเงียบ)
+    ⇒ เจอ marker 経由なし/経由無し = ถือว่ายกเลิก経由地 คืน None (ไม่เอา nH เข้า 台帳 · บรรทัดจะกลายเป็น 변경 🟡)
+    """
     if keiyu:
-        m = re.search(r"\((\d+)H\)", str(keiyu))
+        s = str(keiyu)
+        if KEIYU_CANCEL_RE.search(s):
+            return None
+        m = re.search(r"\((\d+)H\)", s)
         if m:
             return f"{m.group(1)}H"
     return None
