@@ -324,7 +324,23 @@ def arrow_dates(n, month, year):
         except ValueError:
             return None
 
-    return to_date(tail), to_date(head)
+    head_d, tail_d = to_date(head), to_date(tail)
+    # หัวลูกศรต้องไม่หลังท้าย: '12/31→1/1' ที่ month=1 (แท็บ ข้ามปี) จะได้หัวเป็นปีหน้า → ลดปีลง 1
+    if head_d and tail_d and head_d > tail_d:
+        try:
+            head_d = head_d.replace(year=head_d.year - 1)
+        except ValueError:
+            head_d = None
+    return tail_d, head_d
+
+
+def mmdd_date(mmdd):
+    """'1019' -> date(2026, 10, 19) — ปีตาม TAB_MONTHS (เดือน >= 8 = 2026, ที่เหลือ 2027)"""
+    try:
+        mm, dd = int(mmdd[:2]), int(mmdd[2:])
+        return datetime.date(2026 if mm >= 8 else 2027, mm, dd)
+    except (TypeError, ValueError):
+        return None
 
 
 def fmt_time(c):
@@ -440,6 +456,7 @@ def read_request_form(path):
     เดิม `serial_to_date('10/25→10/26')` = None ⇒ แถวถูกข้ามเงียบ (ใบ 1019: 10/25→10/26, 10/30→10/31,
     11/5→11/6, 1/2→1/3 หลุด 台帳 4 บรรทัด) · วันต้นลูกศรฝาก {date: []} ถ้าไม่มีแถวอื่นเหลือ (ฟอร์ม = ความจริงเต็มของวัน)"""
     wb = openpyxl.load_workbook(path, data_only=True)
+    form_date = mmdd_date(os.path.basename(path)[:4])  # '1019' -> 2026-10-19 (กันล้างวันย้อนหลัง)
     out = {}
     cancelled_only = set()
     moved_srcs = set()
@@ -454,10 +471,15 @@ def read_request_form(path):
             src = None
             if d is None:
                 d, src = arrow_dates(n, month, year)  # "10/25→10/26" = ย้ายไป 10/26
-            if d is None or d.month != month or d.year not in (2026, 2027):
+                if d is None or d.year not in (2026, 2027):
+                    continue  # แถว "ย้ายวัน": วันปลายทางอยู่คนละเดือนกับแท็บได้ (10/31→11/1)
+            elif d.month != month or d.year not in (2026, 2027):
                 continue
-            if src is not None and src.month == month and src.year in (2026, 2027):
-                moved_srcs.add(src)
+            if src is not None:
+                if src.year in (2026, 2027) and (form_date is None or src >= form_date):
+                    moved_srcs.add(src)
+                else:
+                    print(f"  ⚠️ ไม่ล้างวันต้นทาง {src} (แถว {r}) — ย้อนหลังกว่าใบ ({form_date}): ให้คนตรวจ")
             j = ws.cell(row=r, column=10).value  # J = 連絡先/สถานะ
             if j and "キャンセル" in str(j):
                 cancelled_only.add(d)  # จดไว้ — หลัง loop ฝากวันว่างให้ build_plan ลบ

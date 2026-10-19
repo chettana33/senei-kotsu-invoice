@@ -3,6 +3,8 @@
 ที่มา 19 ต.ค. 69: พี่เจยืนยันความหมายของ `10/25→10/26` ในใบ 1019 = ย้ายจาก 25 ไป 26
 แต่ `serial_to_date()` คืน None กับข้อความ ⇒ read_request_form ข้ามแถวเงียบ ๆ (台帳 ขาดเที่ยว)
 + วันต้นลูกศรต้องถูกล้างเมื่อไม่มีแถวอื่นเหลือ (ฟอร์ม = ความจริงเต็มของวัน)
++ แถวที่วันปลายทางอยู่คนละเดือนกับแท็บ (10/31→11/1) ต้องไม่ถูกทิ้ง
++ วันต้นลูกศรที่ย้อนหลังกว่าใบ = ไม่ล้าง (กันลบข้อมูลของวันที่วิ่งไปแล้ว)
 
 รัน: python tools/test_taicho_moved_dates.py   (ไม่ยิงเน็ต · ไม่แตะชีต)
 """
@@ -40,43 +42,43 @@ check("'1月2日→1月3日' (ม.ค. 2027)", tgs.arrow_dates("1月2日→\n1�
       (datetime.date(2027, 1, 3), datetime.date(2027, 1, 2)))
 check("ข้ามปี '12/31→1/1' (ธ.ค. 2026)", tgs.arrow_dates("12/31→1/1", 12, 2026),
       (datetime.date(2027, 1, 1), datetime.date(2026, 12, 31)))
+check("ข้ามปี '12/31→1/1' อ่านจากแท็บ ม.ค. 2027 (วันต้นต้องไม่เป็นปีหน้า)",
+      tgs.arrow_dates("12/31→1/1", 1, 2027),
+      (datetime.date(2027, 1, 1), datetime.date(2026, 12, 31)))
+check("ข้ามเดือน '10/31→11/1'", tgs.arrow_dates("10/31→11/1", 10, 2026),
+      (datetime.date(2026, 11, 1), datetime.date(2026, 10, 31)))
 check("ไม่มีลูกศร = ไม่ใช่วันแบบย้าย", tgs.arrow_dates("10/25", 10, 2026), (None, None))
 check("ค่าเป็น datetime = ไม่ใช่วันแบบย้าย",
       tgs.arrow_dates(datetime.datetime(2026, 10, 25), 10, 2026), (None, None))
 
-# ---- 2) read_request_form: workbook สังเคราะห์ 3 แท็บ ----
+# ---- 2) read_request_form: workbook สังเคราะห์ 3 แท็บ (ชื่อไฟล์ลงท้าย 1019 = วันของใบ) ----
 wb = openpyxl.Workbook()
 wb.remove(wb.active)
 
-ws = wb.create_sheet("26.10")
-ws["N8"] = "配車日"
-rows_oct = [
+
+def sheet(tab, rows):
+    ws = wb.create_sheet(tab)
+    ws["N8"] = "配車日"
+    for i, (n, c, d, g, j) in enumerate(rows, start=10):
+        ws.cell(row=i, column=14, value=n)
+        ws.cell(row=i, column=3, value=c)
+        ws.cell(row=i, column=4, value=d)
+        ws.cell(row=i, column=7, value=g)
+        ws.cell(row=i, column=10, value=j)
+
+
+sheet("26.10", [
     (datetime.datetime(2026, 10, 25), datetime.time(6, 0), "HTL", "AP2", "050-0001"),
     ("10/25\n→10/26", datetime.time(6, 0), "HTL", "AP2", "050-0002"),   # ย้ายวัน 25 -> 26
     (datetime.datetime(2026, 10, 26), "6:00→\n6：15", "HTL", "AP2", "050-0003"),
-]
-for i, (n, c, d, g, j) in enumerate(rows_oct, start=10):
-    ws.cell(row=i, column=14, value=n)
-    ws.cell(row=i, column=3, value=c)
-    ws.cell(row=i, column=4, value=d)
-    ws.cell(row=i, column=7, value=g)
-    ws.cell(row=i, column=10, value=j)
+    ("10/31→11/1", datetime.time(7, 0), "HTL", "AP1", None),             # ข้ามเดือน
+    ("10/01→10/20", datetime.time(8, 0), "HTL", "AP1", None),            # วันต้นย้อนหลัง -> ห้ามล้าง
+])
+sheet("26.11", [("11月5日→\n11月6日", datetime.time(6, 45), "HTL", "AP1", None)])
+sheet("27.01", [("1月2日→\n1月3日", "17:50→\n18：30", "HTL", "AP2", None)])
 
-ws = wb.create_sheet("26.11")
-ws["N8"] = "配車日"
-ws.cell(row=10, column=14, value="11月5日→\n11月6日")   # แถวเดียวของวันต้นทาง = ต้องล้าง 11/5
-ws.cell(row=10, column=3, value=datetime.time(6, 45))
-ws.cell(row=10, column=4, value="HTL")
-ws.cell(row=10, column=7, value="AP1")
-
-ws = wb.create_sheet("27.01")
-ws["N8"] = "配車日"
-ws.cell(row=10, column=14, value="1月2日→\n1月3日")
-ws.cell(row=10, column=3, value="17:50→\n18：30")
-ws.cell(row=10, column=4, value="HTL")
-ws.cell(row=10, column=7, value="AP2")
-
-tmp = os.path.join(tempfile.gettempdir(), "test_taicho_moved_dates.xlsx")
+tmp_dir = tempfile.mkdtemp()
+tmp = os.path.join(tmp_dir, "1019_test_taicho_moved_dates.xlsx")
 wb.save(tmp)
 try:
     out = tgs.read_request_form(tmp)
@@ -86,6 +88,12 @@ try:
     check("10/26 ได้ 2 เที่ยว (06:00 จากแถวย้ายวัน + 06:15)",
           out.get(datetime.date(2026, 10, 26)),
           [e("06:00", "HTL", "AP2"), e("06:15", "HTL", "AP2")])
+    check("10/31→11/1 เก็บเข้าวันที่ 1 พ.ย. (ข้ามเดือน ไม่ถูกทิ้ง)",
+          out.get(datetime.date(2026, 11, 1)), [e("07:00", "HTL", "AP1")])
+    check("10/01→10/20 · วันต้นย้อนหลังกว่าใบ = ไม่ถูกล้าง",
+          datetime.date(2026, 10, 1) not in out, True)
+    check("10/20 ได้ 08:00 จากแถว 10/01→10/20",
+          out.get(datetime.date(2026, 10, 20)), [e("08:00", "HTL", "AP1")])
     check("11/5 ถูกฝากเป็น [] (วันต้นทางไม่มีแถวเหลือ = ล้าง)",
           out.get(datetime.date(2026, 11, 5)), [])
     check("11/6 ได้ 06:45 จากแถว 11月5日→11月6日",
@@ -95,6 +103,7 @@ try:
     check("1/2 ถูกฝากเป็น []", out.get(datetime.date(2027, 1, 2)), [])
 finally:
     os.remove(tmp)
+    os.rmdir(tmp_dir)
 
 print()
 if FAIL:

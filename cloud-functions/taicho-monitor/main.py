@@ -433,7 +433,23 @@ def arrow_dates(n, month, year):
         except ValueError:
             return None
 
-    return to_date(tail), to_date(head)
+    head_d, tail_d = to_date(head), to_date(tail)
+    # หัวลูกศรต้องไม่หลังท้าย: '12/31→1/1' ที่ month=1 (แท็บข้ามปี) จะได้หัวเป็นปีหน้า → ลดปีลง 1
+    if head_d and tail_d and head_d > tail_d:
+        try:
+            head_d = head_d.replace(year=head_d.year - 1)
+        except ValueError:
+            head_d = None
+    return tail_d, head_d
+
+
+def mmdd_date(mmdd):
+    """'1019' -> date(2026, 10, 19) — ปีตาม TAB_MONTHS (เดือน >= 8 = 2026, ที่เหลือ 2027)"""
+    try:
+        mm, dd = int(mmdd[:2]), int(mmdd[2:])
+        return _dt.date(2026 if mm >= 8 else 2027, mm, dd)
+    except (TypeError, ValueError):
+        return None
 
 
 def fmt_time(c):
@@ -501,10 +517,13 @@ def color_runs(text):
     return runs
 
 
-def parse_form_bytes(data):
+def parse_form_bytes(data, form_date=None):
     """อ่านใบขอรถ -> {date: [entry]} โดย entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)
-    วันที่ใบระบุ キャンセล (col J) ทั้งหมด = คิวถูกยกเลิก -> ฝาก {date: []} ให้ build_plan เห็น
-    แล้วลบจาก master (บั๊ก 9 ก.ย. 69: 10/8 cancel-only day ไม่เคยลบ)"""
+    วันที่ใบระบุ キャンセル (col J) ทั้งหมด = คิวถูกยกเลิก -> ฝาก {date: []} ให้ build_plan เห็น
+    แล้วลบจาก master (บั๊ก 9 ก.ย. 69: 10/8 cancel-only day ไม่เคยลบ)
+
+    19 ต.ค. 69: ช่อง 配車日 เขียน "10/25→10/26" = **ย้ายวัน** → เที่ยวไปอยู่วันปลายลูกศร
+    (พี่เจยืนยัน · mirror tools/taicho_gsheets.py) · form_date = วันของใบ (กันล้างวันย้อนหลัง)"""
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
     out = {}
     cancelled_only = set()
@@ -520,10 +539,15 @@ def parse_form_bytes(data):
             src = None
             if d is None:
                 d, src = arrow_dates(n, month, year)  # "10/25→10/26" = ย้ายไป 10/26
-            if d is None or d.month != month or d.year not in (2026, 2027):
+                if d is None or d.year not in (2026, 2027):
+                    continue  # แถว "ย้ายวัน": วันปลายทางอยู่คนละเดือนกับแท็บได้ (10/31→11/1)
+            elif d.month != month or d.year not in (2026, 2027):
                 continue
-            if src is not None and src.month == month and src.year in (2026, 2027):
-                moved_srcs.add(src)
+            if src is not None:
+                if src.year in (2026, 2027) and (form_date is None or src >= form_date):
+                    moved_srcs.add(src)
+                else:
+                    print(f"  ⚠️ ไม่ล้างวันต้นทาง {src} (แถว {r}) — ย้อนหลังกว่าใบ: ให้คนตรวจ", flush=True)
             j = ws.cell(row=r, column=10).value
             if j and "キャンセル" in str(j):
                 cancelled_only.add(d)  # จดไว้ — หลัง loop ฝากวันว่างให้ build_plan ลบ
@@ -977,7 +1001,7 @@ def run_flow():
         try:
             data = _get_media(f"{DRIVE_API}/files/{fid}?alt=media", token)
             skipped = []
-            plan = build_plan(parse_form_bytes(data), skipped=skipped)
+            plan = build_plan(parse_form_bytes(data, mmdd_date(mmdd)), skipped=skipped)
             if not plan:
                 msg = f"✅ 台帳を確認しました（{mmdd}）: 変更なし"
                 if skipped:
