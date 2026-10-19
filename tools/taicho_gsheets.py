@@ -300,6 +300,33 @@ def serial_to_date(n):
     return None
 
 
+ARROW_DATE_RE = re.compile(r"(\d{1,2})\s*[月/]\s*(\d{1,2})")
+
+
+def arrow_dates(n, month, year):
+    """'10/25→10/26' / '10/30→10月31日' / '11月5日→11月6日' -> (วันปลายลูกศร, วันต้นลูกศร)
+
+    พี่เจยืนยัน 19 ต.ค. 69: ลูกศรในช่อง 配車日 (col N) = **ย้ายวัน** — เที่ยวไปอยู่ที่วัน **ปลายลูกศร**
+    (เหมือน `fmt_time` ที่ใช้เวลาหลังลูกศรอยู่แล้ว) · คืน (None, None) ถ้าไม่ใช่รูปแบบลูกศร/อ่านไม่ได้
+    """
+    if not isinstance(n, str) or "→" not in n:
+        return None, None
+    head, tail = n.split("→", 1)
+
+    def to_date(part):
+        m = ARROW_DATE_RE.search(part)
+        if not m:
+            return None
+        try:
+            # เดือนปลายทางเล็กกว่าเดือนของแท็บ = ข้ามปี (12/31→1/1)
+            return datetime.date(year + (1 if int(m.group(1)) < month else 0),
+                                 int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            return None
+
+    return to_date(tail), to_date(head)
+
+
 def fmt_time(c):
     """คอลัมน์ C -> เวลาที่ใช้ลง台帳 (str 'HH:MM')."""
     if isinstance(c, datetime.time):
@@ -407,19 +434,30 @@ def write_cell_rich(entry_row, day, text, runs):
 def read_request_form(path):
     """อ่านใบขอรถ: คืน dict {date: [entry]} entry = {t, h, D, G} (D=配車場所 col D, G=行先 col G)
     วันที่ใบระบุ キャンセル (col J) ทั้งหมด = ยกเลิก -> ฝาก {date: []} ให้ build_plan ลบจาก master
-    (ตรงกับ cloud parse_form_bytes — แก้ 9 ก.ย. 69: cancel-only day ไม่เคยลบ)"""
+    (ตรงกับ cloud parse_form_bytes — แก้ 9 ก.ย. 69: cancel-only day ไม่เคยลบ)
+
+    19 ต.ค. 69 (พี่เจยืนยันความหมาย): ช่อง 配車日 เขียน "10/25→10/26" = **ย้ายวัน** → เที่ยวไปอยู่วันปลายลูกศร
+    เดิม `serial_to_date('10/25→10/26')` = None ⇒ แถวถูกข้ามเงียบ (ใบ 1019: 10/25→10/26, 10/30→10/31,
+    11/5→11/6, 1/2→1/3 หลุด 台帳 4 บรรทัด) · วันต้นลูกศรฝาก {date: []} ถ้าไม่มีแถวอื่นเหลือ (ฟอร์ม = ความจริงเต็มของวัน)"""
     wb = openpyxl.load_workbook(path, data_only=True)
     out = {}
     cancelled_only = set()
+    moved_srcs = set()
     for tab, month in TAB_MONTHS.items():
         if tab not in wb.sheetnames:
             continue
+        year = 2000 + int(tab.split(".")[0])  # '26.10' -> 2026 · '27.01' -> 2027
         ws = wb[tab]
         for r in range(10, ws.max_row + 1):
             n = ws.cell(row=r, column=14).value  # N = 配車日
             d = serial_to_date(n)
+            src = None
+            if d is None:
+                d, src = arrow_dates(n, month, year)  # "10/25→10/26" = ย้ายไป 10/26
             if d is None or d.month != month or d.year not in (2026, 2027):
                 continue
+            if src is not None and src.month == month and src.year in (2026, 2027):
+                moved_srcs.add(src)
             j = ws.cell(row=r, column=10).value  # J = 連絡先/สถานะ
             if j and "キャンセル" in str(j):
                 cancelled_only.add(d)  # จดไว้ — หลัง loop ฝากวันว่างให้ build_plan ลบ
@@ -435,6 +473,8 @@ def read_request_form(path):
             out.setdefault(d, []).append({"t": c, "h": h, "D": D, "G": G})
     for d in cancelled_only:
         out.setdefault(d, [])  # วันที่มีแต่ cancel -> ว่าง (plan: ลบ)
+    for d in moved_srcs:
+        out.setdefault(d, [])  # วันต้นทางของแถว "ย้ายวัน" — ไม่มีแถวเหลือ = ล้างช่อง (plan: ลบ)
     for d in out:
         # เก็บเวลาซ้ำ (รถ 2 คันเวลาเดียวกัน) — set() ตัดซ้ำ ผิด (29 ส.ค. 69)
         out[d] = sorted(out[d], key=lambda e: (e["t"][:2], e["t"][3:]))

@@ -410,6 +410,32 @@ def serial_to_date(n):
     return None
 
 
+ARROW_DATE_RE = re.compile(r"(\d{1,2})\s*[月/]\s*(\d{1,2})")
+
+
+def arrow_dates(n, month, year):
+    """'10/25→10/26' / '10/30→10月31日' -> (วันปลายลูกศร, วันต้นลูกศร)
+
+    พี่เจยืนยัน 19 ต.ค. 69: ลูกศรในช่อง 配車日 = ย้ายวัน — เที่ยวไปอยู่ที่วันปลายลูกศร
+    **mirror กับ tools/taicho_gsheets.py** (เดิม serial_to_date คืน None ⇒ แถวถูกข้ามเงียบ)
+    """
+    if not isinstance(n, str) or "→" not in n:
+        return None, None
+    head, tail = n.split("→", 1)
+
+    def to_date(part):
+        m = ARROW_DATE_RE.search(part)
+        if not m:
+            return None
+        try:
+            return _dt.date(year + (1 if int(m.group(1)) < month else 0),
+                            int(m.group(1)), int(m.group(2)))
+        except ValueError:
+            return None
+
+    return to_date(tail), to_date(head)
+
+
 def fmt_time(c):
     if isinstance(c, _dt.time):
         return c.strftime("%H:%M")
@@ -482,15 +508,22 @@ def parse_form_bytes(data):
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
     out = {}
     cancelled_only = set()
+    moved_srcs = set()
     for tab, month in TAB_MONTHS.items():
         if tab not in wb.sheetnames:
             continue
+        year = 2000 + int(tab.split(".")[0])  # '26.10' -> 2026 · '27.01' -> 2027
         ws = wb[tab]
         for r in range(10, ws.max_row + 1):
             n = ws.cell(row=r, column=14).value
             d = serial_to_date(n)
+            src = None
+            if d is None:
+                d, src = arrow_dates(n, month, year)  # "10/25→10/26" = ย้ายไป 10/26
             if d is None or d.month != month or d.year not in (2026, 2027):
                 continue
+            if src is not None and src.month == month and src.year in (2026, 2027):
+                moved_srcs.add(src)
             j = ws.cell(row=r, column=10).value
             if j and "キャンセル" in str(j):
                 cancelled_only.add(d)  # จดไว้ — หลัง loop ฝากวันว่างให้ build_plan ลบ
@@ -506,6 +539,8 @@ def parse_form_bytes(data):
             out.setdefault(d, []).append({"t": c, "h": h, "D": D, "G": G})
     for d in cancelled_only:
         out.setdefault(d, [])  # วันที่มีแต่ cancel -> ว่าง (plan: ลบ)
+    for d in moved_srcs:
+        out.setdefault(d, [])  # วันต้นทางของแถว "ย้ายวัน" — ไม่มีแถวเหลือ = ล้างช่อง (plan: ลบ)
     def _tk(e):
         return tuple(re.match(r"(\d{2}):(\d{2})", e["t"]).groups())
     return {d: sorted(v, key=_tk) for d, v in out.items()}
