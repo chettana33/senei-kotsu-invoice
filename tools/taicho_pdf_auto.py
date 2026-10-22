@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """taicho_pdf_auto.py — สร้าง PDF 台帳 อัตโนมัติหลัง cloud apply (เพิ่ม 8 ก.ย. 69)
 
-Task Scheduler: PaTeaw-TaichoPdf (จ-ศ 19:15) — cloud taicho-monitor ทำ apply+LINE แล้ว (16-19:00);
+Task Scheduler: PaTeaw-TaichoPdf (ทุก 10 นาที · ทำงาน จ-ศ 16:00-23:30) — cloud taicho-monitor ทำ apply+LINE แล้ว (16-19:00);
 สคริปต์นี้สแกนใบขอรถใน Drive → ใบที่: (1) ยังไม่มี PDF หรือ PDF เก่ากว่าใบ (2) master มีข้อมูลวันนั้น
 (apply เสร็จ) → สร้าง PDF (HTML+Edge) + QA (taicho_qa.py)
 
@@ -69,13 +69,15 @@ def find_python_exe():
 
 
 def main():
-    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะ จ-ศ 16:00-20:00 (ใบ 千栄 มา 16-19 · cloud apply ถึง 19:55
-    # → ต้องมีรอบหลัง 19:55 ไว้ rebuild PDF · แก้ 10 ก.ย. 69 จากเดิม 19:40)
+    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะ จ-ศ 16:00-23:30 (ใบ 千栄 มา 16-19 · cloud apply ถึง 19:55
+    # → ต้องมีรอบหลัง 19:55 ไว้ rebuild PDF · 10 ก.ย. 69: 19:40→20:00 · 22 ต.ค. 69: 20:00→23:30
+    # เพราะเครื่องเข้า sleep 17:05-20:27 (ใบ 1022 เข้า 17:20) แล้วตื่นมา 20:33 = เลยหน้าต่างไปแล้ว
+    # = คืนนั้นไม่มี PDF เลย · ขยายถึง 23:30 ⇒ ตื่นเมื่อไรก็ยังสร้างทัน)
     # นอก window/วันหยุด = ออกเงียบ กันอ่าน master นอกเวลา (429) — 9 ก.ย. 69
     now_t = dt.datetime.now().time()
     if dt.datetime.now().weekday() >= 5:  # เสาร์-อาทิตย์
         return 0
-    if not (dt.time(16, 0) <= now_t <= dt.time(20, 0)):
+    if not (dt.time(16, 0) <= now_t <= dt.time(23, 30)):
         return 0
     baseline = load_baseline()
     if baseline <= 0:  # รอบแรก = ตั้ง baseline ตอนนี้ (ไม่ rebuild ใบเก่า)
