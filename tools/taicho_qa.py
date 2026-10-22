@@ -54,6 +54,13 @@ def qa_pdf(path):
         problems.append(f"ขนาด {info['page_w']}x{info['page_h']} ไม่ใช่ A4 landscape 842x595")
     txt = pg.get_text()
     info["emoji"] = {ch: txt.count(ch) for ch in EMOJI}
+    # ธง "ในตาราง" เท่านั้น (22 ต.ค. 69 — พี่เจจับได้): บรรทัดคำอธิบายใต้ตาราง `🟡変更は 🟢新規は`
+    # มี 🟡 1 + 🟢 1 ติดมาด้วย ⇒ รายงานด้วย `emoji` = นับเกินจริงทุกใบ (1022: 17/1 ทั้งที่ในตาราง = 16/0)
+    # ⚠️ ด่าน "มี emoji เป็น text" ยังใช้ `emoji` (นับรวม legend) — ใบที่ไม่มีการเปลี่ยนแปลง
+    # ยังต้องผ่านด่าน renderer เหมือนเดิม
+    body = "\n".join(ln for ln in txt.splitlines()
+                     if "変更は" not in ln and "新規は" not in ln)
+    info["emoji_content"] = {ch: body.count(ch) for ch in EMOJI}
     if sum(info["emoji"].values()) == 0:
         problems.append("emoji 🟡🟢🔷 ไม่เป็น text (reportlab ฝัง PNG = ผิด; HTML+Edge = เป็นตัวอักษรจริง)")
     fonts = {f[3] for f in pg.get_fonts()}
