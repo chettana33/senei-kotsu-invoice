@@ -68,16 +68,25 @@ def find_python_exe():
     return alt if os.path.exists(alt) else exe
 
 
+WINDOW_START = dt.time(16, 0)
+WINDOW_END = dt.time(23, 30)  # 10 ก.ย. 69: 19:40→20:00 · 22 ต.ค. 69: 20:00→23:30
+
+
+def in_window(now=None):
+    """จ-ศ ภายในหน้าต่างสร้าง PDF — แยกเป็นฟังก์ชันเพื่อเทสได้ (22 ต.ค. 69)
+
+    ขยาย 20:00→23:30 เพราะเครื่องเข้า sleep 17:05-20:27 (ใบ 1022 เข้า 17:20) แล้วตื่นมา 20:33
+    = เลยหน้าต่างไปแล้ว ⇒ คืนนั้นไม่มี PDF เลย · ถึง 23:30 = ตื่นเมื่อไรก็ยังสร้างทัน
+    """
+    now = now or dt.datetime.now()
+    return now.weekday() < 5 and WINDOW_START <= now.time() <= WINDOW_END
+
+
 def main():
-    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะ จ-ศ 16:00-23:30 (ใบ 千栄 มา 16-19 · cloud apply ถึง 19:55
-    # → ต้องมีรอบหลัง 19:55 ไว้ rebuild PDF · 10 ก.ย. 69: 19:40→20:00 · 22 ต.ค. 69: 20:00→23:30
-    # เพราะเครื่องเข้า sleep 17:05-20:27 (ใบ 1022 เข้า 17:20) แล้วตื่นมา 20:33 = เลยหน้าต่างไปแล้ว
-    # = คืนนั้นไม่มี PDF เลย · ขยายถึง 23:30 ⇒ ตื่นเมื่อไรก็ยังสร้างทัน)
+    # Task รันทุก 10 นาที (24/7) — ทำงานเฉพาะใน `in_window()` (ใบ 千栄 มา 16-19 · cloud apply ถึง 19:55
+    # → ต้องมีรอบหลัง 19:55 ไว้ rebuild PDF)
     # นอก window/วันหยุด = ออกเงียบ กันอ่าน master นอกเวลา (429) — 9 ก.ย. 69
-    now_t = dt.datetime.now().time()
-    if dt.datetime.now().weekday() >= 5:  # เสาร์-อาทิตย์
-        return 0
-    if not (dt.time(16, 0) <= now_t <= dt.time(23, 30)):
+    if not in_window():
         return 0
     baseline = load_baseline()
     if baseline <= 0:  # รอบแรก = ตั้ง baseline ตอนนี้ (ไม่ rebuild ใบเก่า)
@@ -153,8 +162,6 @@ def main():
             except Exception as e:  # noqa: BLE001
                 log(f"BUILD FAIL {mmdd}: {type(e).__name__}: {e}")
                 return 1
-            built[mmdd] = master_mt  # จำ master ตอนสร้าง — กัน rebuild วนในรอบถัดไป
-            save_built(built)
             made.append((mmdd, pdf_path))
     fails = 0
     py = find_python_exe()
@@ -169,6 +176,11 @@ def main():
             continue
         if r.returncode == 0 and "QA PASS" in out:
             log(f"QA PASS {pdf_path}")
+            # จำ master **หลัง** QA ผ่าน (22 ต.ค. 69 — review มุมคนนอก) — เดิมบันทึกก่อน QA
+            # ⇒ QA FAIL ค้าง: PDF เสีย + รอบหน้า need=False + LastResult 0 = ไม่มีใครรู้
+            # ตอนนี้ QA FAIL = ไม่บันทึก ⇒ รอบถัดไป (master ใหม่กว่า built) สร้างซ้ำเอง
+            built[mmdd] = master_mt
+            save_built(built)
         else:
             fails += 1
             log(f"QA FAIL {pdf_path}: {out[-300:]}")
