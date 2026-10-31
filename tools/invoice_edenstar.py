@@ -180,6 +180,14 @@ def read_month_sheet(form_path: str, year: int, month: int):
                     break
                 except ValueError:
                     continue
+            # เคสจริง 31 ต.ค. 69: เซลล์เขียน "10/30→10月31日" (เลื่อนวัน) — ใช้ "วันปลายทาง" หลังลูกศร
+            if d is None and "→" in date_val:
+                tail = date_val.split("→")[-1]
+                m = (re.search(r"(\d{1,2})\s*月\s*(\d{1,2})\s*日", tail)
+                     or re.search(r"(\d{1,2})/(\d{1,2})", tail))
+                if m:
+                    d = dt.date(year, int(m.group(1)), int(m.group(2)))
+                    print(f"  ℹ️ แถว {r}: วันที่ถูกเลื่อน ({date_val!r}) → ใช้ {d}")
         if d is None:
             print(f"  ⚠️ ข้ามแถว {r}: อ่านวันที่ไม่ได้ (ค่า={date_val!r})")
             continue
