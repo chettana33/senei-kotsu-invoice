@@ -9,6 +9,7 @@ Env: SHEETS_CLIENT_ID / SHEETS_CLIENT_SECRET / SHEETS_REFRESH_TOKEN (kimonoland 
      scope มี drive ด้วย — ใช้เรียก Drive API) / LINE_CHANNEL_ID / LINE_CHANNEL_SECRET / LINE_USER_IDS
 """
 import base64
+import calendar
 import io
 import json
 import os
@@ -819,13 +820,17 @@ def rotate_table_if_needed():
                             "endRowIndex": dest, "startColumnIndex": 0, "endColumnIndex": 33},
                             "destination": {"sheetId": new_gid, "startRowIndex": dest, "endColumnIndex": 33},
                             "pasteType": "PASTE_FORMAT"}}])
+            # 2 พ.ย. 69 (mirror tools/taicho_auto.py): หัววันตามจำนวนวันจริงของเดือน (ก.พ. = 28/29)
+            # เดิม `range(1,32)` ⇒ แท็บ ก.พ. โชว์คอลัมน์ 29-31 เกิน (แท็บประวัติ 2月(2026) = 28 วัน)
             h = dest + 1
-            days = list(range(1, 32))
+            days = list(range(1, calendar.monthrange(new_year, new_month)[1] + 1))
             rng = f"A{h}:AF{h + 9}"
             quote_rng = urllib.parse.quote(rng)
             _api("PUT", f"{SHEETS_API}/{SHEET_ID}/values/{quote_rng}?valueInputOption=USER_ENTERED",
-                 body={"values": [[f"{new_year}年 {new_month}月"] + days, [None] * 33, [None] * 33,
-                                  ["千栄1568"] + [None] * 32, [None] * 33, [None] + days, [None] * 33,
+                 body={"values": [[f"{new_year}年 {new_month}月"] + days + [None] * (32 - len(days)),
+                                  [None] * 33, [None] * 33,
+                                  ["千栄1568"] + [None] * 32, [None] * 33,
+                                  [None] + days + [None] * (32 - len(days)), [None] * 33,
                                   ["変更は🟡"] + [None] * 32, ["新規は🟢"] + [None] * 32,
                                   [LEGEND_ROWS[2]] + [None] * 32]})
             batch_update([{"updateSheetProperties": {"properties": {"sheetId": new_gid, "title": new_title},

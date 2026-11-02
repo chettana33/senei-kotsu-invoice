@@ -12,6 +12,7 @@
 
 ความปลอดภัย: LINE channel secret อ่านจาก config นอก repo (ห้าม commit ขึ้น GitHub)
 """
+import calendar
 import glob
 import json
 import logging
@@ -381,14 +382,16 @@ def rotate_table_if_needed():
                 "pasteType": "PASTE_FORMAT"}}])
 
             # 4) เขียนค่าเดือนใหม่ (hdr = dest+1, entry +3, sub +5, legend +7..9)
+            # 2 พ.ย. 69: เขียนหัววันตาม "จำนวนวันจริงของเดือน" (ก.พ. = 28/29) — เดิม `range(1,32)` ทุกเดือน
+            # ⇒ แท็บ ก.พ. โชว์คอลัมน์ 29-31 เกิน (แท็บประวัติ `千栄1568 2月(2026)` = 28 วัน)
             h = dest + 1
-            days = list(range(1, 32))
+            days = list(range(1, calendar.monthrange(new_year, new_month)[1] + 1))
             _tab_update_tab(new_gid, f"A{h}:AF{h + 9}", [
-                [f"{new_year}年 {new_month}月"] + days,
+                [f"{new_year}年 {new_month}月"] + days + [None] * (32 - len(days)),
                 [None] * 33, [None] * 33,
                 ["千栄1568"] + [None] * 32,
                 [None] * 33,
-                [None] + days,
+                [None] + days + [None] * (32 - len(days)),
                 [None] * 33,
                 ["変更は🟡"] + [None] * 32,
                 ["新規は🟢"] + [None] * 32,

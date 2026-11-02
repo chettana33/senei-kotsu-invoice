@@ -197,6 +197,10 @@ def phase_b_cloud(tok, t1):
         check("B: rotate ซ้ำไม่เพิ่มแท็บ", len(cm.list_tabs()), n)
         cm.date = fake_date(datetime.date(2027, 1, 15))
         check("B: หน้าต่างตรงเดือนแล้ว (วัน 15) คืน False", cm.rotate_table_if_needed(), False)
+        # 2 พ.ย. 69: เดือนใหม่ต้องได้หัววันตามจำนวนวันจริง (1月-4月 = 4月 30 วัน) — เดิม range(1,32) ทุกเดือน
+        row57 = read_tab(copy_id, "千栄1568 1月-4月(2027)", "A57:AG57", tok)
+        day_nums = [c for c in (row57[0] if row57 else [])[1:] if str(c).strip().isdigit()]
+        check("B: หัววันเดือนใหม่ = จำนวนวันจริง (4月 = 30)", len(day_nums), 30)
     finally:
         # B ลบสำเนาตัวเอง (ห้าม `return` ใน finally — SyntaxWarning + กลืน exception)
         drop_copy(tok, copy_id)
