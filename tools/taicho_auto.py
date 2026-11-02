@@ -307,8 +307,8 @@ def rotate_table_if_needed():
     (10月-1月 → [1,10,11,12]) ⇒ ด่านจบลูปไม่จริง → rotate วนซ้ำไม่จบ + HTTP 400 ทุก 5 นาทีทั้งวัน
     + ทิ้งแท็บ `千栄1568 tmp` ค้าง (ชื่อซ้ำ = duplicate ไม่ได้อีกเลย) · แผน/เหตุผลอยู่ใน `tg.rotate_plan`"""
     today = date.fromisoformat(os.environ.get("TEST_DATE", date.today().isoformat()))
-    if today.day != 1:
-        return False
+    # 2 พ.ย. 69: ไม่มีด่าน "ต้องเป็นวันที่ 1" แล้ว — rotate ที่พลาดวันที่ 1 (เช่น 1 พ.ย. 69 = วันอาทิตย์,
+    # scheduler รัน จ-ศ) ต้องตามเก็บรอบถัดไปได้ · rotate_plan คืน None เองเมื่อหน้าต่างตรงเดือนปัจจุบัน
     rotated = False
     while True:
         name, gid = tg.find_main_tab()

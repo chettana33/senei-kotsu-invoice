@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """test_taicho_rotate_e2e.py — ทดสอบ rotate รายเดือน "ของจริง" บน **สำเนา** ของชีต master
 
@@ -7,9 +7,14 @@
 ไม่มีอะไรพิสูจน์ได้เลยถ้าไม่ยิง API จริง · สคริปต์นี้คัดลอกไฟล์ master ทั้งไฟล์ แล้วรัน rotate จริง
 บนสำเนา (ไฟล์จริงไม่ถูกแตะ) แล้วลบสำเนาทิ้ง
 
-ทดสอบ 2 ฝาแฝด (โค้ดเดียวกัน คนละสำเนา):
-  A) `tools/taicho_auto.py` (ตัวรัน local) @ 1 พ.ย. 69
-  B) `cloud-functions/taicho-monitor/main.py` (ตัวที่รันจริงบน cloud) @ 1 ธ.ค. 69 + ปลูกแท็บ tmp ค้าง
+ทดสอบ 2 ฝาแฝด (โค้ดเดียวกัน คนละสำเนา) — baseline = หน้าต่าง 11月-2月(2027) (หลัง rotate 2 พ.ย. 69):
+  A) `tools/taicho_auto.py` (ตัวรัน local) @ 2 ธ.ค. 69 — วันไม่ใช่วันที่ 1 = ตามเก็บได้ (catch-up)
+  B) `cloud-functions/taicho-monitor/main.py` (ตัวรันจริงบน cloud) @ 1 ธ.ค. 69 + ปลูกแท็บ tmp ค้าง
+     แล้ว rotate ต่อ @ 2 ม.ค. 70 (catch-up หลังข้ามปี)
+
+ที่มาจากบั๊กจริง 2 พ.ย. 69: 1 พ.ย. 69 = วันอาทิตย์ — scheduler cloud รัน จ-ศ (16:00-19:55)
+⇒ ฟังก์ชันไม่รันทั้งวัน · เดิม `rotate_table_if_needed()` มีด่าน `today.day != 1` ⇒ rotate ที่พลาด
+วันที่ 1 ไม่มีวันตามเก็บ = หน้าต่างค้าง 10月-1月 ทั้งเดือน (แท็บ 2月 ไม่เกิด)
 
 รัน: python tools/test_taicho_rotate_e2e.py        (~1 นาที · ต้องมีเน็ต + creds Sheets)
 หมายเหตุ: อ่าน creds จากไฟล์ local (ไม่พิมพ์ค่า) · ใช้ Drive scope เดียวกันใน creds เดียวกัน
@@ -100,8 +105,8 @@ def drop_copy(tok, fid):
 
 
 def phase_a_local(tok):
-    """A) rotate ด้วย tools/taicho_auto.py บนสำเนา — 1 พ.ย. 69"""
-    print("--- A) taicho_auto.py (local) @ 1 พ.ย. 69 ---")
+    """A) rotate ด้วย tools/taicho_auto.py บนสำเนา — 2 ธ.ค. 69 (ไม่ใช่วันที่ 1 = catch-up)"""
+    print("--- A) taicho_auto.py (local) @ 2 ธ.ค. 69 ---")
     copy_id = fresh_copy(tok)
     print(f"    copy id = {copy_id}")
     try:
@@ -109,29 +114,28 @@ def phase_a_local(tok):
         assert tg.SHEET_ID != SRC, "กันพลาด: ต้องไม่ใช่ไฟล์จริง"
         import taicho_auto as ta
         tabs0 = tg.list_tabs()
-        main0 = tg.find_main_tab()[0]
-        check("A: แท็บหลักตั้งต้น", main0, "千栄1568 10月-1月(2027)")
+        check("A: แท็บหลักตั้งต้น 11月-2月(2027)", tg.find_main_tab()[0], "千栄1568 11月-2月(2027)")
         check("A: ไม่มี tmp ตั้งต้น", tg.TMP_TAB_TITLE in tabs0, False)
-        cells0 = {m: dict(tg.read_taicho()[m]["cells"]) for m in (10, 11, 12, 1)}
+        cells0 = {m: dict(tg.read_taicho()[m]["cells"]) for m in (11, 12, 1, 2)}
 
-        os.environ["TEST_DATE"] = "2026-11-01"
+        os.environ["TEST_DATE"] = "2026-12-02"  # 2 ธ.ค. 69 (ไม่ใช่วันที่ 1) = regression ของเคสจริง
         ta.rotate_table_if_needed()
         tabs1 = tg.list_tabs()
-        check("A: แท็บใหม่ 11月-2月(2027)", tg.find_main_tab()[0], "千栄1568 11月-2月(2027)")
-        check("A: แท็บเก่าเก็บเป็นประวัติ", "千栄1568 10月-1月(2027)" in tabs1, True)
+        check("A: แท็บใหม่ 12月-3月(2027)", tg.find_main_tab()[0], "千栄1568 12月-3月(2027)")
+        check("A: แท็บเก่าเก็บเป็นประวัติ", "千栄1568 11月-2月(2027)" in tabs1, True)
         check("A: ไม่มี tmp ค้าง", tg.TMP_TAB_TITLE in tabs1, False)
         check("A: จำนวนแท็บ +1", len(tabs1), len(tabs0) + 1)
         t1 = tg.read_taicho()
-        check("A: ลำดับเดือน", tg.window_months(t1), [11, 12, 1, 2])
-        check("A: ปีของแต่ละเดือน", [t1[m]["year"] for m in (11, 12, 1, 2)], [2026, 2026, 2027, 2027])
-        heads = [read_tab(copy_id, "千栄1568 11月-2月(2027)", f"A{r}:A{r}", tok)[0][0]
+        check("A: ลำดับเดือน", tg.window_months(t1), [12, 1, 2, 3])
+        check("A: ปีของแต่ละเดือน", [t1[m]["year"] for m in (12, 1, 2, 3)], [2026, 2027, 2027, 2027])
+        heads = [read_tab(copy_id, "千栄1568 12月-3月(2027)", f"A{r}:A{r}", tok)[0][0]
                  for r in (9, 25, 41, 57)]
         check("A: หัวเดือนในชีตจริง", heads,
-              ["2026年 11月", "2026年 12月", "2027年 1月", "2027年 2月"])
-        check("A: แถว entry ต่อเดือน", [t1[m]["row"] for m in (11, 12, 1, 2)], [12, 28, 44, 60])
-        check("A: ข้อมูล 11/12/1月 ยกมาครบ", [t1[m]["cells"] for m in (11, 12, 1)],
-              [cells0[m] for m in (11, 12, 1)])
-        check("A: 2月 ว่าง", t1[2]["cells"], {})
+              ["2026年 12月", "2027年 1月", "2027年 2月", "2027年 3月"])
+        check("A: แถว entry ต่อเดือน", [t1[m]["row"] for m in (12, 1, 2, 3)], [12, 28, 44, 60])
+        check("A: ข้อมูล 12/1/2月 ยกมาครบ", [t1[m]["cells"] for m in (12, 1, 2)],
+              [cells0[m] for m in (12, 1, 2)])
+        check("A: 3月 ว่าง", t1[3]["cells"], {})
         check("A: จำนวนเดือนในแท็บใหม่", len(t1), 4)
         return copy_id, t1
     finally:
@@ -139,8 +143,9 @@ def phase_a_local(tok):
 
 
 def phase_b_cloud(tok, t1):
-    """B) rotate ด้วยโค้ด cloud (ตัวที่รันจริง) บนสำเนาใหม่ — 1 ธ.ค. 69 + ปลูก tmp ค้าง"""
-    print("--- B) cloud main.py (ตัวรันจริง) @ 1 ธ.ค. 69 ---")
+    """B) rotate ด้วยโค้ด cloud (ตัวที่รันจริง) บนสำเนาใหม่ — 1 ธ.ค. 69 + ปลูก tmp ค้าง
+    แล้ว rotate ต่อ @ 2 ม.ค. 70 (catch-up หลังข้ามปี)"""
+    print("--- B) cloud main.py (ตัวรันจริง) @ 1 ธ.ค. 69 + 2 ม.ค. 70 ---")
     c = json.load(open(tg.CRED, encoding="utf-8"))
     os.environ["SHEETS_CLIENT_ID"] = c["client_id"]
     os.environ["SHEETS_CLIENT_SECRET"] = c["client_secret"]
@@ -152,46 +157,46 @@ def phase_b_cloud(tok, t1):
         cm.SHEET_ID = copy_id
         assert cm.SHEET_ID != SRC, "กันพลาด: ต้องไม่ใช่ไฟล์จริง"
         tb = cm.read_taicho()
-        check("B: read_taicho อ่านปีจาก header", [tb[m]["year"] for m in (10, 11, 12, 1)],
-              [2026, 2026, 2026, 2027])
-        cells0 = {m: dict(tb[m]["cells"]) for m in (10, 11, 12, 1)}
+        check("B: read_taicho อ่านปีจาก header", [tb[m]["year"] for m in (11, 12, 1, 2)],
+              [2026, 2026, 2027, 2027])
+        cells0 = {m: dict(tb[m]["cells"]) for m in (11, 12, 1, 2)}
 
-        cm.date = fake_date(datetime.date(2026, 11, 1))
-        check("B: rotate 1 พ.ย. คืน True", cm.rotate_table_if_needed(), True)
-        check("B: แท็บใหม่ 11月-2月(2027)", cm.find_main_tab()[0], "千栄1568 11月-2月(2027)")
+        cm.date = fake_date(datetime.date(2026, 12, 1))
+        check("B: rotate 1 ธ.ค. คืน True", cm.rotate_table_if_needed(), True)
+        check("B: แท็บใหม่ 12月-3月(2027)", cm.find_main_tab()[0], "千栄1568 12月-3月(2027)")
         t1c = cm.read_taicho()
-        check("B: ข้อมูล 11/12/1月 ยกมาครบ", [t1c[m]["cells"] for m in (11, 12, 1)],
-              [cells0[m] for m in (11, 12, 1)])
-        heads = [read_tab(copy_id, "千栄1568 11月-2月(2027)", f"A{r}:A{r}", tok)[0][0]
+        check("B: ข้อมูล 12/1/2月 ยกมาครบ", [t1c[m]["cells"] for m in (12, 1, 2)],
+              [cells0[m] for m in (12, 1, 2)])
+        heads = [read_tab(copy_id, "千栄1568 12月-3月(2027)", f"A{r}:A{r}", tok)[0][0]
                  for r in (9, 25, 41, 57)]
         check("B: หัวเดือนในชีตจริง", heads,
-              ["2026年 11月", "2026年 12月", "2027年 1月", "2027年 2月"])
+              ["2026年 12月", "2027年 1月", "2027年 2月", "2027年 3月"])
 
-        print("    ปลูกแท็บ tmp ค้าง แล้ว rotate 1 ธ.ค. 69 ...")
+        print("    ปลูกแท็บ tmp ค้าง แล้ว rotate 2 ม.ค. 70 ...")
         tabs1 = cm.list_tabs()
         api("POST", f"https://sheets.googleapis.com/v4/spreadsheets/{copy_id}:batchUpdate", tok,
-            {"requests": [{"duplicateSheet": {"sourceSheetId": tabs1["千栄1568 11月-2月(2027)"],
+            {"requests": [{"duplicateSheet": {"sourceSheetId": tabs1["千栄1568 12月-3月(2027)"],
                                              "insertSheetIndex": 0,
                                              "newSheetName": cm.TMP_TAB_TITLE}}]})
         check("B: ปลูก tmp สำเร็จ", cm.TMP_TAB_TITLE in cm.list_tabs(), True)
 
-        cm.date = fake_date(datetime.date(2026, 12, 1))
+        cm.date = fake_date(datetime.date(2027, 1, 2))  # 2 ม.ค. = ตามเก็บได้ (ไม่ใช่วันที่ 1)
         cm.rotate_table_if_needed()
         tabs2 = cm.list_tabs()
-        check("B: แท็บใหม่ 12月-3月(2027)", cm.find_main_tab()[0], "千栄1568 12月-3月(2027)")
+        check("B: แท็บใหม่ 1月-4月(2027)", cm.find_main_tab()[0], "千栄1568 1月-4月(2027)")
         check("B: ลบ tmp ที่ค้างแล้ว", cm.TMP_TAB_TITLE in tabs2, False)
         check("B: จำนวนแท็บ +1 จากรอบก่อน", len(tabs2), len(tabs1) + 1)
         t2 = cm.read_taicho()
-        check("B: ลำดับเดือน", cm.window_months(t2), [12, 1, 2, 3])
-        check("B: ปีของแต่ละเดือน", [t2[m]["year"] for m in (12, 1, 2, 3)], [2026, 2027, 2027, 2027])
-        check("B: ข้อมูล 12/1/2月 ยกมาครบ", [t2[m]["cells"] for m in (12, 1, 2)],
-              [t1c[m]["cells"] for m in (12, 1, 2)])
+        check("B: ลำดับเดือน", cm.window_months(t2), [1, 2, 3, 4])
+        check("B: ปีของแต่ละเดือน", [t2[m]["year"] for m in (1, 2, 3, 4)], [2027, 2027, 2027, 2027])
+        check("B: ข้อมูล 1/2/3月 ยกมาครบ", [t2[m]["cells"] for m in (1, 2, 3)],
+              [t1c[m]["cells"] for m in (1, 2, 3)])
 
         n = len(cm.list_tabs())
         check("B: rotate ซ้ำวันเดิม คืน False", cm.rotate_table_if_needed(), False)
         check("B: rotate ซ้ำไม่เพิ่มแท็บ", len(cm.list_tabs()), n)
-        cm.date = fake_date(datetime.date(2026, 12, 15))
-        check("B: วันที่ไม่ใช่ 1 คืน False", cm.rotate_table_if_needed(), False)
+        cm.date = fake_date(datetime.date(2027, 1, 15))
+        check("B: หน้าต่างตรงเดือนแล้ว (วัน 15) คืน False", cm.rotate_table_if_needed(), False)
     finally:
         # B ลบสำเนาตัวเอง (ห้าม `return` ใน finally — SyntaxWarning + กลืน exception)
         drop_copy(tok, copy_id)
