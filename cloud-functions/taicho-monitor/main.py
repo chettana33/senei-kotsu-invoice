@@ -15,6 +15,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 import datetime as _dt
@@ -498,22 +499,34 @@ def route_code(v):
 
     เดิมแปลงแค่คำเป๊ะ HTL/AP1/AP2 ⇒ 行先 ที่เป็นชื่อโรงแรมจริง (`湯楽城HTL` ใบ 1104/1105)
     แปลงไม่ได้ → d2_text ทิ้งรหัสทั้ง 2 ข้างเงียบ ๆ (ช่อง 11月14 ไม่มี 空/ホ) ⇒ กติกากว้าง
-    (มติพี่เจ 5 พ.ย. 69): ขึ้นต้น AP = 空 · มี/ลงท้าย HTL·ホテル·HOTEL = ホ"""
-    v = str(v or "").strip()
+    (มติพี่เจ 5 พ.ย. 69 · review 5 พ.ย. 69): คำโรงแรมก่อน AP (กัน `APA HOTEL` = 空) ·
+    ฝั่งสนามบินรับ AP<n>/AIRPORT/空港/NRT/HND · NFKC ก่อนเทียบ (ＡＰ２ = 空)"""
+    v = unicodedata.normalize("NFKC", str(v or "")).strip()
     if not v:
         return None
     if v in ROUTE_CODE:
         return ROUTE_CODE[v]
     u = v.upper()
-    if u.startswith("AP"):
-        return "空"
-    if u.endswith("HTL") or "ホテル" in v or "HOTEL" in u:
+    if "HTL" in u or "HOTEL" in u or "ホテル" in v:
         return "ホ"
+    if re.match(r"^AP\d*$", u) or "AIRPORT" in u or "空港" in v or "NRT" in u or "HND" in u:
+        return "空"
     return None
 
 
+WARNINGS = []
+
+
+def _warn(msg):
+    if msg not in WARNINGS:
+        WARNINGS.append(msg)
+    print(f"WARN {msg}", flush=True)
+
+
 def d2_text(entry):
-    """entry {t, h?, D, G} -> ข้อความ D2: 'ホ 10:00 2H 空' (ไม่มีรหัส D/G = คงแบบเดิม '10:00 2H')"""
+    """entry {t, h?, D, G} -> ข้อความ D2: 'ホ 10:00 2H 空' (ไม่มีรหัส D/G = คงแบบเดิม '10:00 2H')
+
+    แปลงได้ข้างเดียว = ยังพิมพ์ข้างนั้น (ไม่ทิ้งที่รู้แล้ว) + เตือนเข้า WARNINGS"""
     o = route_code(entry.get("D")) or ""
     g2 = route_code(entry.get("G")) or ""
     t = entry["t"]
@@ -521,8 +534,11 @@ def d2_text(entry):
     mid = f"{t}" + (f" {h}" if h else "")
     if o and g2:
         return f"{o} {mid} {g2}"
-    if (entry.get("D") or entry.get("G")) and (not o or not g2):
-        print(f"WARN แปลงทิศทางไม่ได้ D={entry.get('D')!r} G={entry.get('G')!r} — ลงเฉพาะเวลา {mid!r}")
+    if o or g2:
+        _warn(f"แปลงทิศทางได้ข้างเดียว D={entry.get('D')!r} G={entry.get('G')!r} → {f'{o} {mid} {g2}'.strip()!r}")
+        return f"{o} {mid} {g2}".strip()
+    if entry.get("D") or entry.get("G"):
+        _warn(f"แปลงทิศทางไม่ได้ D={entry.get('D')!r} G={entry.get('G')!r} → ลงเฉพาะเวลา {mid!r}")
     return mid
 
 
@@ -681,7 +697,10 @@ def build_plan(form_rows, skipped=None):
 
     `skipped` = list ที่จะถูกเติม (month, day, foreign_lines) ของวันที่ถูกข้าม เพราะเซลล์มีบรรทัด
     ที่ระบบสร้างไม่ได้ — caller ต้องรายงานให้พี่เจเห็น (ห้ามเงียบ: วันนั้นจะค้างไม่ถูกอัปเดต)
+
+    `WARNINGS` (module-level) = เตือนรหัสทิศทาง ของรอบนี้ — run_flow ต่อท้ายข้อความ LINE
     """
+    WARNINGS.clear()
     taicho = read_taicho()
     plan = {}
     for d, entries in sorted(form_rows.items()):
@@ -1030,6 +1049,7 @@ def run_flow():
             data = _get_media(f"{DRIVE_API}/files/{fid}?alt=media", token)
             skipped = []
             plan = build_plan(parse_form_bytes(data, mmdd_date(mmdd)), skipped=skipped)
+            warns = list(WARNINGS)  # รหัส 空/ホ แปลงไม่ได้/ได้ข้างเดียว (review 5 พ.ย. 69: print เฉย ๆ ไม่มีใครเห็น)
             if not plan:
                 msg = f"✅ 台帳を確認しました（{mmdd}）: 変更なし"
                 if skipped:
@@ -1038,6 +1058,9 @@ def run_flow():
                            + "\n".join(f"  - {m}月{d}日: {f!r}" for m, d, f in skipped[:5])
                            + "\n要確認（システムは上書きしません）")
                     print(f"SKIPPED days: {skipped!r}", flush=True)
+                if warns:
+                    msg = (f"⚠️ 台帳を確認しました（{mmdd}）: 変更なし（空/ホ未確定 {len(warns)} 件）\n"
+                           + "\n".join(f"  - {w}" for w in warns[:5]) + "\n要確認（経路の向き）")
                 print("no change:", nm, flush=True)
                 send_line(f"{msg}\n{SHORT_TAICHO_URL}")
                 send_line("宜しくお願い致します。")
@@ -1058,6 +1081,8 @@ def run_flow():
                     total += 1
             for m, d, f in skipped:  # วันที่มีบรรทัดที่ระบบสร้างไม่ได้ = ข้ามจริง ต้องบอกให้พี่เจตรวจ
                 lines.append(f"  - {m}月{d}日 [⚠️未更新]: 手入力行あり {f!r} — 要確認")
+            for w in warns:  # 行先/配車場所 ที่แปลงเป็น 空/ホ ไม่ได้ = 台帳 อาจไม่มีทิศทาง
+                lines.append(f"  - [⚠️空ホ未確定]: {w} — 要確認")
             msg = (f"📋 台帳を自動更新しました（{mmdd}、{total}箇所）:\n" + "\n".join(lines))
             send_line(msg)
             send_line(f"📄 台帳を開く（{mmdd}）\n{SHORT_TAICHO_URL}")

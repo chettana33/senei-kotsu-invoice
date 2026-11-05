@@ -21,6 +21,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -396,26 +397,41 @@ def route_code(v):
 
     เดิมแปลงได้แค่คำเป๊ะ HTL/AP1/AP2 ⇒ ใบ 1104/1105 เขียน行先 เป็น **ชื่อโรงแรมจริง**
     (`湯楽城HTL`) = แปลงไม่ได้ → `d2_text` ทิ้งรหัส **ทั้ง 2 ข้าง** เงียบ ๆ (ช่อง 11月14
-    กลายเป็น `13:35 2H` ไม่มี 空/ホ · พี่เจจับได้ 5 พ.ย. 69) ⇒ กติกากว้าง (มติพี่เจ 5 พ.ย. 69):
-    ขึ้นต้น AP = 空 · มี/ลงท้าย HTL·ホテル·HOTEL = ホ — ไม่เข้าทั้งสองแบบ = None (ผู้เรียกเตือน)"""
-    v = str(v or "").strip()
+    กลายเป็น `13:35 2H` ไม่มี 空/ホ · พี่เจจับได้ 5 พ.ย. 69)
+
+    กติกากว้าง (มติพี่เจ 5 พ.ย. 69 · review 5 พ.ย. 69 ปิดกับดัก 2 ข้อ):
+      ① คำโรงแรม (`HTL`/`HOTEL`/`ホテル`) เช็ค **ก่อน** `AP` — ไม่งั้น `APA HOTEL` = 空 (ผิด)
+      ② ฝั่งสนามบินรับ `AP<n>` / `AIRPORT` / `空港` / `NRT` / `HND` — ไม่ใช่แค่ up. ที่ขึ้นต้น AP
+      ③ NFKC ก่อนเทียบ — ＡＰ２ (เต็มความกว้าง) ต้องได้ 空
+    ไม่เข้าทุกแบบ = None (`d2_text` เตือน ไม่เดา)"""
+    v = unicodedata.normalize("NFKC", str(v or "")).strip()
     if not v:
         return None
     if v in ROUTE_CODE:
         return ROUTE_CODE[v]
     u = v.upper()
-    if u.startswith("AP"):
-        return "空"
-    if u.endswith("HTL") or "ホテル" in v or "HOTEL" in u:
+    if "HTL" in u or "HOTEL" in u or "ホテル" in v:
         return "ホ"
+    if re.match(r"^AP\d*$", u) or "AIRPORT" in u or "空港" in v or "NRT" in u or "HND" in u:
+        return "空"
     return None
+
+
+WARNINGS = []  # ข้อความเตือนของรอบ build_plan ล่าสุด (caller เอาไปแจ้ง LINE/log)
+
+
+def _warn(msg):
+    if msg not in WARNINGS:
+        WARNINGS.append(msg)
+    print(f"  ⚠️ {msg}", flush=True)
 
 
 def d2_text(entry):
     """entry {t, h?, D, G} -> 'ホ 10:00 2H 空' (ไม่มีรหัส = คงแบบเดิม '10:00 2H')
 
-    ⚠️ แปลงทิศทางไม่ได้ = เตือนออกทาง stdout (ไม่เงียบ — ของจริงเคยหลุดเพราะบังคับว่าต้องได้
-    ทั้งคู่ถึงจะพิมพ์ แล้วทั้งคู่หายไปพร้อมกัน)"""
+    ⚠️ แปลงทิศทางไม่ได้ = เตือน (ไม่เงียบ — ของจริงเคยหลุดเพราะบังคับว่าต้องได้ทั้งคู่ถึงจะพิมพ์
+    แล้วทั้งคู่หายไปพร้อมกัน) · **ข ก่อนที่แปลงได้ = ยังพิมพ์ไว้ข้างเดียว** (review 5 พ.ย. 69:
+    D=HTL, G=東京駅 เดิมทิ้ง ホ ไปด้วย)"""
     o = route_code(entry.get("D")) or ""
     g2 = route_code(entry.get("G")) or ""
     t = entry["t"]
@@ -423,9 +439,11 @@ def d2_text(entry):
     mid = f"{t}" + (f" {h}" if h else "")
     if o and g2:
         return f"{o} {mid} {g2}"
-    if (entry.get("D") or entry.get("G")) and (not o or not g2):
-        print(f"  ⚠️ แปลงทิศทางไม่ได้ D={entry.get('D')!r} G={entry.get('G')!r} "
-              f"— ลงเฉพาะเวลา {mid!r} (ให้คนตรวจ)")
+    if o or g2:
+        _warn(f"แปลงทิศทางได้ข้างเดียว D={entry.get('D')!r} G={entry.get('G')!r} → {f'{o} {mid} {g2}'.strip()!r}")
+        return f"{o} {mid} {g2}".strip()
+    if entry.get("D") or entry.get("G"):
+        _warn(f"แปลงทิศทางไม่ได้ D={entry.get('D')!r} G={entry.get('G')!r} → ลงเฉพาะเวลา {mid!r}")
     return mid
 
 
@@ -622,7 +640,11 @@ def build_plan(form_rows, skipped=None):
 
     `skipped` = list ที่จะถูกเติม (month, day, foreign_lines) ของวันที่ถูกข้าม เพราะเซลล์มีบรรทัด
     ที่ระบบสร้างไม่ได้ — caller ต้องรายงานให้พี่เจเห็น (ห้ามเงียบ: วันนั้นจะค้างไม่ถูกอัปเดต)
+
+    `WARNINGS` (module-level) = เตือนรหัสทิศทางแปลงไม่ได้/ได้ข้างเดียว ของรอบนี้ — caller ต้องอ่าน
+    ไปแจ้ง LINE/log (print อย่างเดียวไม่พอ: local รันด้วย pythonw = ไม่มีใครเห็น)
     """
+    WARNINGS.clear()
     taicho = read_taicho()
     plan = {}
     for d, entries in sorted(form_rows.items()):

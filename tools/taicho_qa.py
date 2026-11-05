@@ -79,7 +79,32 @@ def qa_pdf(path):
     info["content_lines"] = len(ys)
     if len(ys) > 60:
         problems.append(f"content y-lines={len(ys)} เกิน 60 (wrap เยอะผิดปกติ — golden ~33-39)")
+    # ด่านรหัสทิศทาง (เพิ่ม 5 พ.ย. 69 — บั๊ก 湯楽城HTL ทำ 11月14 เป็น `13:35 2H` ไม่มี 空/ホ
+    # แต่ QA เดิมยัง PASS): บรรทัดที่มี HH:MM ในแถว 台帳 ต้องมี ホ หรือ 空 อย่างน้อยหนึ่ง
+    # ข้อยกเว้น: บรรทัด legend/หัวตาราง/วันที่ (ไม่มี HH:MM อยู่แล้วจึงไม่เข้าเงื่อนไข)
+    _scan = find_codeless_lines(pg)
+    info["codeless_lines"] = _scan[:5]
+    if _scan:
+        problems.append(f"มี {len(_scan)} บรรทัดเวลาไม่มีรหัส 空/ホ (ทิศทางหาย): {_scan[:3]}")
     return (len(problems) == 0), problems, info
+
+
+def find_codeless_lines(pg):
+    """บรรทัดที่มี HH:MM แต่ไม่มี ホ/空 — คืน list ข้อความ (จำกัด 20)"""
+    out = []
+    for b in pg.get_text("dict").get("blocks", []):
+        for ln in b.get("lines", []):
+            s = "".join(sp["text"] for sp in ln["spans"]).strip()
+            if not s or not _WRAP_RE.search(s):
+                continue
+            if "ホ" in s or "空" in s:
+                continue
+            if any(k in s for k in ("変更は", "新規は", "左=")):
+                continue
+            out.append(s)
+            if len(out) >= 20:
+                return out
+    return out
 
 
 def main():
