@@ -391,14 +391,42 @@ def col_index(col):
     return (ord(col[0]) - 65) * 26 + (ord(col[1]) - 65) + 26
 
 
+def route_code(v):
+    """配車場所/行先 -> 'ホ' / '空' · None = แปลงไม่ได้
+
+    เดิมแปลงได้แค่คำเป๊ะ HTL/AP1/AP2 ⇒ ใบ 1104/1105 เขียน行先 เป็น **ชื่อโรงแรมจริง**
+    (`湯楽城HTL`) = แปลงไม่ได้ → `d2_text` ทิ้งรหัส **ทั้ง 2 ข้าง** เงียบ ๆ (ช่อง 11月14
+    กลายเป็น `13:35 2H` ไม่มี 空/ホ · พี่เจจับได้ 5 พ.ย. 69) ⇒ กติกากว้าง (มติพี่เจ 5 พ.ย. 69):
+    ขึ้นต้น AP = 空 · มี/ลงท้าย HTL·ホテル·HOTEL = ホ — ไม่เข้าทั้งสองแบบ = None (ผู้เรียกเตือน)"""
+    v = str(v or "").strip()
+    if not v:
+        return None
+    if v in ROUTE_CODE:
+        return ROUTE_CODE[v]
+    u = v.upper()
+    if u.startswith("AP"):
+        return "空"
+    if u.endswith("HTL") or "ホテル" in v or "HOTEL" in u:
+        return "ホ"
+    return None
+
+
 def d2_text(entry):
-    """entry {t, h?, D, G} -> 'ホ 10:00 2H 空' (ไม่มีรหัส = คงแบบเดิม '10:00 2H')"""
-    o = ROUTE_CODE.get(entry.get("D", "")) or ""
-    g2 = ROUTE_CODE.get(entry.get("G", "")) or ""
+    """entry {t, h?, D, G} -> 'ホ 10:00 2H 空' (ไม่มีรหัส = คงแบบเดิม '10:00 2H')
+
+    ⚠️ แปลงทิศทางไม่ได้ = เตือนออกทาง stdout (ไม่เงียบ — ของจริงเคยหลุดเพราะบังคับว่าต้องได้
+    ทั้งคู่ถึงจะพิมพ์ แล้วทั้งคู่หายไปพร้อมกัน)"""
+    o = route_code(entry.get("D")) or ""
+    g2 = route_code(entry.get("G")) or ""
     t = entry["t"]
     h = entry.get("h") or ""
     mid = f"{t}" + (f" {h}" if h else "")
-    return f"{o} {mid} {g2}" if (o and g2) else mid
+    if o and g2:
+        return f"{o} {mid} {g2}"
+    if (entry.get("D") or entry.get("G")) and (not o or not g2):
+        print(f"  ⚠️ แปลงทิศทางไม่ได้ D={entry.get('D')!r} G={entry.get('G')!r} "
+              f"— ลงเฉพาะเวลา {mid!r} (ให้คนตรวจ)")
+    return mid
 
 
 def color_runs(text):

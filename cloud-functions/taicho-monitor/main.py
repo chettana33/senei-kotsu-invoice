@@ -493,15 +493,36 @@ def col_index(col):
     return (ord(col[0]) - 65) * 26 + (ord(col[1]) - 65) + 26
 
 
+def route_code(v):
+    """配車場所/行先 -> 'ホ' / '空' · None = แปลงไม่ได้ (mirror tools/taicho_gsheets.py)
+
+    เดิมแปลงแค่คำเป๊ะ HTL/AP1/AP2 ⇒ 行先 ที่เป็นชื่อโรงแรมจริง (`湯楽城HTL` ใบ 1104/1105)
+    แปลงไม่ได้ → d2_text ทิ้งรหัสทั้ง 2 ข้างเงียบ ๆ (ช่อง 11月14 ไม่มี 空/ホ) ⇒ กติกากว้าง
+    (มติพี่เจ 5 พ.ย. 69): ขึ้นต้น AP = 空 · มี/ลงท้าย HTL·ホテル·HOTEL = ホ"""
+    v = str(v or "").strip()
+    if not v:
+        return None
+    if v in ROUTE_CODE:
+        return ROUTE_CODE[v]
+    u = v.upper()
+    if u.startswith("AP"):
+        return "空"
+    if u.endswith("HTL") or "ホテル" in v or "HOTEL" in u:
+        return "ホ"
+    return None
+
+
 def d2_text(entry):
     """entry {t, h?, D, G} -> ข้อความ D2: 'ホ 10:00 2H 空' (ไม่มีรหัส D/G = คงแบบเดิม '10:00 2H')"""
-    o = ROUTE_CODE.get(entry.get("D", "")) or ""
-    g2 = ROUTE_CODE.get(entry.get("G", "")) or ""
+    o = route_code(entry.get("D")) or ""
+    g2 = route_code(entry.get("G")) or ""
     t = entry["t"]
     h = entry.get("h") or ""
     mid = f"{t}" + (f" {h}" if h else "")
     if o and g2:
         return f"{o} {mid} {g2}"
+    if (entry.get("D") or entry.get("G")) and (not o or not g2):
+        print(f"WARN แปลงทิศทางไม่ได้ D={entry.get('D')!r} G={entry.get('G')!r} — ลงเฉพาะเวลา {mid!r}")
     return mid
 
 
