@@ -562,7 +562,24 @@ def run(dry_run=False):
     save_state(state)
 
 
+def _parse_args(argv):
+    """11 พ.ย. 69: ต้องมี argparse — เดิมอ่าน sys.argv เองแล้วรันงานจริงทันที
+    ⇒ `py tools\\taicho_auto.py --help` (หรือรันเปล่า ๆ) เขียนชีต master + ส่ง LINE โดยไม่ตั้งใจ
+    (เคสจริง 11 พ.ย. 69 18:05: apply ใบ 0907 · 35 จุด · ต้องกู้ด้วย Sheets version history)"""
+    import argparse
+
+    ap = argparse.ArgumentParser(
+        description="台帳 auto (apply ใบขอรถล่าสุด + rotate) — ต้องใส่ --run จึงทำงานจริง",
+    )
+    ap.add_argument("--run", action="store_true", help="ยืนยันรันงานจริง (ไม่ใส่ = แสดง help แล้วจบ ไม่แตะชีต/ไม่ส่ง LINE)")
+    ap.add_argument("--dry-run", action="store_true", help="คำนวณ/พิมพ์อย่างเดียว ไม่เขียนชีต ไม่ส่ง LINE")
+    return ap.parse_args(argv)
+
+
 if __name__ == "__main__":
-    dry = "--dry-run" in sys.argv
+    args = _parse_args(sys.argv[1:])
+    if not args.run:
+        # argparse พิมพ์ help แล้วออกด้วย exit 0 — ไม่รันงาน
+        _parse_args(["--help"])
     with FileLock():
-        run(dry_run=dry)
+        run(dry_run=args.dry_run)
