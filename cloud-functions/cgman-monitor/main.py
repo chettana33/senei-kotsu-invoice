@@ -165,8 +165,17 @@ def run():
                 folder_cache[key] = resolve_folder(BASE_DIR_PATH + [str(year), f"{mm}月"], token)
             folder_id = folder_cache[key]
             if drive_file_exists(folder_id, name, token):
-                print("  already in Drive, skip:", name, flush=True)
-                continue
+                # 🔴 11 พ.ย. 69 (มติพี่เจ): 千栄 ตั้งชื่อไฟล์ซ้ำได้ — ส่ง `1110_…xlsx` ทั้ง 10 และ 11 พ.ย.
+                # (612,341 / 608,433 B · เนื้อใหม่) ⇒ เดิมโค้ดข้ามเพราะชื่อซ้ำ ทำให้ "ใบของวันนี้" ไม่เคยลง Drive
+                # ⇒ ไม่มี apply · ไม่มี PDF (เคสจริง 11 พ.ย. 69). ตอนนี้เก็บเวอร์ชันใหม่เป็น base(MMDD ที่เมล์เข้า).ext
+                #   = รูปแบบเดียวกับที่พี่เจแก้มือ (…(1111).xlsx) และ taicho_pdf_auto อ่านวันจาก mtime อยู่แล้ว
+                base, ext = os.path.splitext(name)
+                alt = f"{base}({email_dt.strftime('%m%d')}){ext}"
+                if alt == name or drive_file_exists(folder_id, alt, token):
+                    print("  already in Drive, skip:", name, flush=True)
+                    continue
+                print(f"  same name for new version -> save as: {alt}", flush=True)
+                name = alt
             att = _get(f"{GMAIL_API}/messages/{m['id']}/attachments/{p['body']['attachmentId']}", token)
             raw = att["data"].replace("-", "+").replace("_", "/")
             raw += "=" * ((4 - len(raw) % 4) % 4)
