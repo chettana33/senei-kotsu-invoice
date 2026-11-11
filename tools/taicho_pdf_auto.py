@@ -124,11 +124,19 @@ def main():
             if not (fn.endswith(".xlsx") and len(fn) >= 4 and fn[:4].isdigit()
                     and "_千栄交通" in fn and int(fn[:2]) == mm):
                 continue
-            mmdd = fn[:4]
+            # 11 พ.ย. 69 (มติพี่เจ): ไฟล์ที่พี่เจ/千栄 ทิ้งไว้ (เช่น `1110_…❌.xlsx`) = ไม่ต้องสร้าง PDF
+            if "❌" in fn:
+                continue
             leaf = os.path.join(month_dir, fn)
             leaf_mtime = os.path.getmtime(leaf)
+            # 🔴 11 พ.ย. 69 (มติพี่เจ): 千栄 ตั้งชื่อไฟล์ซ้ำ/ไม่ตรงวัน (ส่งใบ "1110" ทั้งวันที่ 10 และ 11 พ.ย.)
+            #   ⇒ ยึด "วันเวลาที่เมล์เข้า" (mtime ของไฟล์ที่ลง Drive) เป็นตัวตัดสินชื่อ PDF
+            #   ไฟล์ที่เข้าถึงวันนี้ = PDF ชื่อ "วันนี้" (1111) แม้ในชื่อไฟล์จะเขียน 1110
+            leaf_dt = dt.datetime.fromtimestamp(leaf_mtime)
+            arrived_today = leaf_dt.date() == dt.date.today()
+            mmdd = dt.date.today().strftime("%m%d") if arrived_today else fn[:4]
             # ใบเก่าที่เคยทำ PDF ไว้แล้ว (ก่อนติดตั้ง) = ไม่แตะ — สร้างเฉพาะใบใหม่/ใบวันนี้
-            is_today = (int(mmdd[2:]) == today and int(mmdd[:2]) == now_mm)
+            is_today = arrived_today or (int(mmdd[2:]) == today and int(mmdd[:2]) == now_mm)
             if leaf_mtime < baseline and not is_today:
                 continue
             pdf_name = tg.pdf_filename(mm, mmdd)
