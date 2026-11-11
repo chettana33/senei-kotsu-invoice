@@ -189,5 +189,17 @@ def main():
     return 1 if fails else 0
 
 
+def _parse_args(argv):
+    """11 พ.ย. 69: เพิ่ม argparse (เดิมไม่มี ⇒ `--help` = รันงานจริงเหมือน taicho_auto)
+    ที่นี่ default ยังต้อง "ทำงาน" เพราะ Task Scheduler เรียกเปล่า ๆ ทุก 10 นาที
+    ⇒ ไม่ใส่ flag = ทำงาน · `--help` = ดูวิธีใช้ · flag แปลก = exit 2 (ไม่รัน)"""
+    import argparse
+
+    ap = argparse.ArgumentParser(description="สร้าง PDF 台帳 อัตโนมัติ (Task ทุก 10 นาที 16:00-23:30)")
+    ap.add_argument("--run", action="store_true", help="ไม่จำเป็น — รันเปล่า ๆ ก็ทำงาน (มีไว้ให้เรียกชัดเจน)")
+    return ap.parse_args(argv)
+
+
 if __name__ == "__main__":
+    _parse_args(sys.argv[1:])
     raise SystemExit(main())

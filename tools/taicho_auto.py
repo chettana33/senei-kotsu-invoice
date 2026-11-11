@@ -75,14 +75,45 @@ logging.basicConfig(
 log = logging.getLogger("taicho_auto")
 
 
+def _lock_is_stale(path, max_age_h=6):
+    """11 พ.ย. 69: lock ที่ pid ตายแล้ว (process ถูกฆ่ากลางงาน) ไม่ควรบล็อกงานถาวร
+    ⇒ `--run` เคย "สำเร็จ" ทั้งที่ไม่ทำอะไรเลย (เคสจริง: .taicho_auto.lock pid 13532 ตายค้าง)"""
+    import time
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            pid = int((f.read() or "0").strip() or 0)
+    except Exception:
+        return True
+    if pid <= 0:
+        return True
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        return True
+    try:
+        return (time.time() - os.path.getmtime(path)) > max_age_h * 3600
+    except Exception:
+        return False
+
+
 class FileLock:
     def __enter__(self):
         try:
             self.fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             os.write(self.fd, str(os.getpid()).encode())
         except FileExistsError:
-            log.info("Another instance is running, skipping.")
-            sys.exit(0)
+            if _lock_is_stale(LOCK_FILE):
+                log.warning("Found stale lock (pid ตาย/เก่าเกิน) — เขียนทับแล้วทำงานต่อ")
+                try:
+                    os.remove(LOCK_FILE)
+                except Exception:
+                    pass
+                self.fd = os.open(LOCK_FILE, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(self.fd, str(os.getpid()).encode())
+            else:
+                log.info("Another instance is running, skipping.")
+                sys.exit(0)
         return self
 
     def __exit__(self, *a):
@@ -578,8 +609,9 @@ def _parse_args(argv):
 
 if __name__ == "__main__":
     args = _parse_args(sys.argv[1:])
-    if not args.run:
+    if not args.run and not args.dry_run:
         # argparse พิมพ์ help แล้วออกด้วย exit 0 — ไม่รันงาน
+        # (`--dry-run` เดี่ยว ๆ = ทางปลอดภัยที่คนอยากได้ ⇒ ยอมรันแบบไม่เขียน)
         _parse_args(["--help"])
     with FileLock():
         run(dry_run=args.dry_run)
