@@ -133,8 +133,12 @@ def _get_bytes(url, token):
 def drive_file_meta(folder_id, name, token):
     """metadata ของไฟล์ชื่อนี้ (id/size/md5Checksum) — เลือกไฟล์ที่ใหม่สุดถ้ามีชื่อซ้ำหลายไฟล์"""
     q = f"name='{name}' and '{folder_id}' in parents and trashed=false"
+    # 🔴 13 พ.ย. 69 (เจอตอน deploy จริง): `orderBy=modifiedTime desc` มีช่องว่างดิบ ๆ
+    # ⇒ urllib โยน "URL can't contain control characters" (Python ปฏิเสธ \x00-\x20)
+    # ⇒ ต้อง quote ค่าทุกครั้ง · เทสต์เดิมจับไม่ได้เพราะ Fake ทับ drive_file_meta ทั้งฟังก์ชัน
+    order = quote("modifiedTime desc")
     files = _get(f"{DRIVE_API}/files?q={quote(q)}"
-                 f"&fields=files(id,name,size,md5Checksum)&orderBy=modifiedTime desc", token).get("files", [])
+                 f"&fields=files(id,name,size,md5Checksum)&orderBy={order}", token).get("files", [])
     return files[0] if files else None
 
 

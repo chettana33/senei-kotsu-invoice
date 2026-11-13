@@ -130,7 +130,8 @@ def check(label, cond, extra=""):
 
 def main() -> int:
     mod = load_module()
-    SAVE_STATE = mod.save_state  # เก็บของจริงไว้ก่อน Fake จะทับ
+    SAVE_STATE = mod.save_state      # เก็บของจริงไว้ก่อน Fake จะทับ
+    REAL_META = mod.drive_file_meta  # ใช้ทดสอบ URL จริงใน T13 (Fake ทับฟังก์ชันนี้)
     content = b"xlsx-v1-content"
     later = b"xlsx-v2-content-longer"
     alt_name = "1113_千栄交通㈱_貸切バス手配依頼書(1113).xlsx"
@@ -246,6 +247,26 @@ def main() -> int:
     n12 = f12.m.run()
     check("T12 ชื่อชนกันในรอบเดียว: ได้ไฟล์เดียว", n12 == 1 and len(f12.uploads) == 1, str(f12.uploads))
     check("T12 ชื่อชนกันในรอบเดียว: เมลที่ 2 ไม่ถูกจด state", "ME" not in f12.state, str(f12.state))
+
+    # T13: URL ของ drive_file_meta ต้องไม่มีช่องว่างดิบ ๆ — บั๊กจริงที่เจอ "หลัง deploy" 13 พ.ย. 69
+    # (เทสต์เดิมจับไม่ได้เพราะ Fake ทับ drive_file_meta ทั้งฟังก์ชัน ⇒ รอบนี้ยิงฟังก์ชันจริงแต่ดัก _get)
+    real_get = mod._get
+    seen_url = {}
+
+    def fake_get_url(url, token):
+        seen_url["url"] = url
+        return {"files": []}
+
+    mod._get = fake_get_url
+    REAL_META("FOLDER", "x.xlsx", "T")
+    mod._get = real_get
+    u = seen_url.get("url", "")
+    check("T13 drive_file_meta: URL ไม่มีช่องว่าง/อักขระควบคุม",
+          bool(u) and not any(ch.isspace() for ch in u), u[:90])
+    check("T13 drive_file_meta: orderBy ถูก encode",
+          "orderBy=modifiedTime%20desc" in u, u[-40:])
+    check("T13 drive_file_meta: ขอ size+md5Checksum ด้วย",
+          "md5Checksum" in u and "size" in u, "")
 
     passed = sum(1 for r in RESULTS if r)
     print(f"\n{'ALL PASS' if passed == len(RESULTS) else 'มีข้อตก'} · {passed}/{len(RESULTS)} ข้อ")
