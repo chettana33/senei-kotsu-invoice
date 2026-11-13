@@ -312,10 +312,15 @@ def run():
                     print("  ชื่อมีรหัสอยู่แล้ว -> ใช้ไฟล์เดิม:", name, flush=True)
                     continue
                 if drive_file_exists(folder_id, alt, token) or (folder_id, alt) in seen_names:
-                    # 13 พ.ย. 69 (review M2): เนื้อใหม่ครั้งที่ 2 ของวันเดียวกัน ⇒ ไม่รู้จะเก็บชื่ออะไร
-                    # ⇒ ไม่จด state (ให้คนตรวจ) — ดีกว่าทิ้งเงียบทั้งไฟล์
-                    print("  alt มีอยู่แล้ว (อาจเป็นเวอร์ชันที่ 2 ของวัน) -> ข้ามรอบนี้ให้ตรวจมือ:",
-                          alt, flush=True)
+                    # 13 พ.ย. 69 (เจอตอน deploy รอบธรรมชาติ 19:55): ไฟล์ `(MMDD)` มีอยู่เยอะเพราะบั๊กเดิม
+                    # ⇒ ถ้าขนาดตรงกับใบนี้ = "เคยเก็บแล้ว" ให้จด state ได้ (ไม่งั้นสแกนซ้ำทุก 5 นาทีตลอดไป)
+                    # ขนาดไม่ตรง/อ่านไม่ได้ = อาจเป็นเวอร์ชันที่ 2 ของวัน ⇒ ไม่จด state ให้คนตรวจ (review M2)
+                    alt_meta = drive_file_meta(folder_id, alt, token)
+                    gmail_size = str(p.get("body", {}).get("size") or "").strip()
+                    if alt_meta and gmail_size.isdigit() and str(alt_meta.get("size")) == gmail_size:
+                        print("  alt มีอยู่แล้วและขนาดตรง = เคยเก็บแล้ว, skip:", alt, flush=True)
+                        continue
+                    print("  alt มีอยู่แล้ว (ขนาดไม่ตรง/ไม่รู้) -> ข้ามรอบนี้ให้ตรวจมือ:", alt, flush=True)
                     skipped += 1
                     continue
                 # 🔴 13 พ.ย. 69: "ชื่อซ้ำ" ไม่เท่ากับ "เนื้อใหม่" — เมลเดิมถูกสแกนซ้ำก็เข้าทางนี้ได้

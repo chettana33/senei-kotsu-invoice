@@ -268,6 +268,21 @@ def main() -> int:
     check("T13 drive_file_meta: ขอ size+md5Checksum ด้วย",
           "md5Checksum" in u and "size" in u, "")
 
+    # T14: ไฟล์ `(MMDD)` มีอยู่แล้วและขนาดตรง = เคยเก็บแล้ว → จด state ได้ (เคสจริงหลัง deploy 19:55)
+    f14 = Fake(mod, {"MF": (msg_dt(), parts_for(content))},
+               drive={"FOLDER": {FORM: content, alt_name: content}})
+    n14 = f14.m.run()
+    check("T14 alt มีและขนาดตรง: ไม่อัปโหลด", n14 == 0 and f14.uploads == [])
+    check("T14 alt มีและขนาดตรง: จด state", f14.state.get("MF") == datetime.date.today().isoformat(),
+          str(f14.state))
+
+    # T15: alt มีแต่ขนาดไม่ตรง = อาจเป็นเวอร์ชันที่ 2 ของวัน → ไม่จด state (ให้คนตรวจ)
+    f15 = Fake(mod, {"MG": (msg_dt(), parts_for(later))},
+               drive={"FOLDER": {FORM: content, alt_name: content}})
+    n15 = f15.m.run()
+    check("T15 alt ขนาดไม่ตรง: ไม่อัปโหลด", n15 == 0 and f15.uploads == [])
+    check("T15 alt ขนาดไม่ตรง: ไม่จด state", "MG" not in f15.state, str(f15.state))
+
     passed = sum(1 for r in RESULTS if r)
     print(f"\n{'ALL PASS' if passed == len(RESULTS) else 'มีข้อตก'} · {passed}/{len(RESULTS)} ข้อ")
     return 0 if passed == len(RESULTS) else 1
