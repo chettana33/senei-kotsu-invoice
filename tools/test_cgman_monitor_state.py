@@ -45,12 +45,13 @@ def load_module():
 class Fake:
     """Drive + Gmail ปลอม: drive = {folder: {name: bytes}} · msgs = {msg_id: (internalDate_ms, [parts])}"""
 
-    def __init__(self, mod, msgs, drive=None, state=None, no_md5=False):
+    def __init__(self, mod, msgs, drive=None, state=None, no_md5=False, meta_no_size=False):
         self.m = mod
         self.msgs = msgs
         self.drive = drive if drive is not None else {}
         self.state = state if state is not None else {}
         self.no_md5 = no_md5
+        self.meta_no_size = meta_no_size
         self.uploads = []
         self.lines = []
 
@@ -82,7 +83,8 @@ class Fake:
         data = self.drive.get(folder, {}).get(name)
         if data is None:
             return None
-        return {"id": f"id-{name}", "size": str(len(data)),
+        return {"id": f"id-{name}",
+                "size": None if self.meta_no_size else str(len(data)),
                 "md5Checksum": None if self.no_md5 else hashlib.md5(data).hexdigest()}
 
     def fake_save_state(self, folder, state, token):
@@ -203,6 +205,47 @@ def main() -> int:
           str(sent.get("_url")))
     check("T7 state ตัดของเก่า > 60 วัน", ok_ret and "NEW" in sent and "OLD" not in sent,
           str({k: v for k, v in sent.items() if not k.startswith("_")}))
+
+    # T8: attachment ชื่อซ้ำในเมลเดียว เนื้อต่าง → อัปโหลดได้ตัวเดียว ไม่จด state (ให้คนตรวจ)
+    f8 = Fake(mod, {"M8": (msg_dt(), parts_for(content) + [
+        {"filename": FORM, "body": {"attachmentId": "A9", "size": len(later)}, "bytes": later}])})
+    n8 = f8.m.run()
+    check("T8 ชื่อซ้ำในเมลเดียว: อัปโหลดแค่ 1", n8 == 1, str(f8.uploads))
+    check("T8 ชื่อซ้ำในเมลเดียว: ไม่จด state", "M8" not in f8.state, str(f8.state))
+
+    # T9: ขนาดเท่ากันแต่เนื้อต่าง (md5Checksum ต่าง) → ต้องเก็บเป็น alt (ทาง md5 จริง)
+    same_len = b"xlsx-v1-contenX"          # ยาวเท่า content (15 B) แต่เนื้อต่าง
+    assert len(same_len) == len(content)
+    f9 = Fake(mod, {"MA": (msg_dt(), parts_for(same_len))}, drive={"FOLDER": {FORM: content}})
+    n9 = f9.m.run()
+    check("T9 ขนาดเท่า/เนื้อต่าง: อัปโหลดเป็น alt", n9 == 1 and f9.uploads == [alt_name], str(f9.uploads))
+
+    # T10: metadata ของ Drive ไม่มี size → fail-closed (ห้ามเดาว่าเนื้อใหม่)
+    f10 = Fake(mod, {"MB": (msg_dt(), parts_for(content))},
+               drive={"FOLDER": {FORM: content}}, meta_no_size=True)
+    n10 = f10.m.run()
+    check("T10 size ของไฟล์เดิมหาย: ไม่สร้างสำเนา", n10 == 0 and f10.uploads == [])
+    check("T10 size ของไฟล์เดิมหาย: ไม่จด state", "MB" not in f10.state)
+
+    # T11: load_state พัง (JSON เสีย) → run() ต้องหยุด ไม่สแกน/ไม่อัปโหลด
+    f11 = Fake(mod, {"MC": (msg_dt(), parts_for(content))})
+    real_load, real_send = mod.load_state, mod.send_line
+    mod.load_state = lambda folder, tok: (_ for _ in ()).throw(RuntimeError("state corrupt"))
+    mod.send_line = lambda text: f11.lines.append(text)
+    raised = False
+    try:
+        f11.m.run()
+    except RuntimeError:
+        raised = True
+    mod.load_state, mod.send_line = real_load, real_send
+    check("T11 state เสีย: โยน error ไม่สแกนต่อ", raised and f11.uploads == [])
+    check("T11 state เสีย: มีแจ้งเตือน LINE", len(f11.lines) == 1, str(f11.lines))
+
+    # T12: 2 เมลในรอบเดียว ชื่อฐานเดียวกัน เนื้อต่าง → ห้ามได้ 2 ไฟล์ชื่อเดียวกัน
+    f12 = Fake(mod, {"MD": (msg_dt(), parts_for(content)), "ME": (msg_dt(), parts_for(later))})
+    n12 = f12.m.run()
+    check("T12 ชื่อชนกันในรอบเดียว: ได้ไฟล์เดียว", n12 == 1 and len(f12.uploads) == 1, str(f12.uploads))
+    check("T12 ชื่อชนกันในรอบเดียว: เมลที่ 2 ไม่ถูกจด state", "ME" not in f12.state, str(f12.state))
 
     passed = sum(1 for r in RESULTS if r)
     print(f"\n{'ALL PASS' if passed == len(RESULTS) else 'มีข้อตก'} · {passed}/{len(RESULTS)} ข้อ")

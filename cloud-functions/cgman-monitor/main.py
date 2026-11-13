@@ -224,6 +224,13 @@ def send_line(text):
             resp.read()
     print("  LINE notification sent")
 
+def safe_line(text):
+    """ส่ง LINE แบบไม่ทำให้รอบล้ม (ใช้กับข้อความแจ้งปัญหาของระบบเอง)"""
+    try:
+        send_line(text)
+    except Exception as e:  # noqa: BLE001
+        print("  cannot send LINE alert:", e, flush=True)
+
 
 def iter_parts(payload):
     """ไล่ part ทุกชั้น (Gmail ซ้อน multipart/mixed → related ได้) — เดิมอ่านชั้นเดียว = ใบหายเงียบ"""
@@ -238,7 +245,13 @@ def run():
     token = refresh_access_token()
     # 13 พ.ย. 69: state อยู่ที่โฟลเดอร์ 台帳入力 ตัวเดียว (ไม่ผูกปี/เดือน)
     state_folder = resolve_folder(BASE_DIR_PATH, token)
-    state = load_state(state_folder, token)
+    try:
+        state = load_state(state_folder, token)
+    except Exception as e:  # noqa: BLE001
+        # 13 พ.ย. 69: อ่าน state พัง = หยุดรอบนี้ (ไม่เดาว่าว่าง = ไม่สแกน 10 วันซ้ำ) แต่ต้องมีสัญญาณ
+        print("  อ่าน state ไม่ได้ -> หยุดรอบนี้:", e, flush=True)
+        safe_line(f"🚨 cgman-monitor: อ่าน state ไม่ได้ ({e}) — หยุดรอบนี้ ไม่สแกนซ้ำย้อนหลัง")
+        raise
     since = (datetime.now() - timedelta(days=10)).strftime("%Y/%m/%d")
     query = f"from:{SENDER} has:attachment after:{since}"
     print("Checking Gmail for sender:", SENDER, flush=True)
@@ -262,6 +275,10 @@ def run():
         skipped = 0  # จำนวน attachment ที่ยังตัดสินไม่ได้ ⇒ ไม่ mark processed (รอบหน้าลองใหม่)
         for p in parts:
             name = os.path.basename(p["filename"].replace("\\", "/"))
+            if not name.lower().endswith((".xlsx", ".xls")):
+                # 13 พ.ย. 69 (review F2): โลโก้/ลายเซ็น (png/pdf) ไม่ใช่ใบขอรถ —
+                # เดิมนับเป็น "ตัดสินไม่ได้" ⇒ เมลไม่ถูกจด state แล้วสแกนซ้ำทุก 5 นาทีตลอดไป
+                continue
             mm = month_from_filename(name)
             if mm is None:
                 print("  cannot determine month from:", name, "- skipping", flush=True)
@@ -275,7 +292,8 @@ def run():
                 folder_cache[key] = resolve_folder(BASE_DIR_PATH + [str(year), f"{mm}月"], token)
             folder_id = folder_cache[key]
             if (folder_id, name) in seen_names:
-                print("  duplicate attachment in this run, skip:", name, flush=True)
+                print("  duplicate attachment in this run -> ข้ามรอบนี้ให้ตรวจมือ:", name, flush=True)
+                skipped += 1
                 continue
             data = None
             meta = drive_file_meta(folder_id, name, token)
@@ -286,34 +304,41 @@ def run():
                 #   = รูปแบบเดียวกับที่พี่เจแก้มือ (…(1111).xlsx) และ taicho_pdf_auto อ่านวันจาก mtime อยู่แล้ว
                 base, ext = os.path.splitext(name)
                 alt = f"{base}({email_dt.strftime('%m%d')}){ext}"
-                if alt == name or drive_file_exists(folder_id, alt, token):
-                    print("  already in Drive, skip:", name, flush=True)
+                if alt == name:
+                    print("  ชื่อมีรหัสอยู่แล้ว -> ใช้ไฟล์เดิม:", name, flush=True)
+                    continue
+                if drive_file_exists(folder_id, alt, token) or (folder_id, alt) in seen_names:
+                    # 13 พ.ย. 69 (review M2): เนื้อใหม่ครั้งที่ 2 ของวันเดียวกัน ⇒ ไม่รู้จะเก็บชื่ออะไร
+                    # ⇒ ไม่จด state (ให้คนตรวจ) — ดีกว่าทิ้งเงียบทั้งไฟล์
+                    print("  alt มีอยู่แล้ว (อาจเป็นเวอร์ชันที่ 2 ของวัน) -> ข้ามรอบนี้ให้ตรวจมือ:",
+                          alt, flush=True)
+                    skipped += 1
                     continue
                 # 🔴 13 พ.ย. 69: "ชื่อซ้ำ" ไม่เท่ากับ "เนื้อใหม่" — เมลเดิมถูกสแกนซ้ำก็เข้าทางนี้ได้
-                # ⇒ เทียบ size (ฟรี) + md5Checksum จาก metadata ของ Drive (ไม่ต้องโหลดไฟล์เดิมซ้ำ)
-                # เคสจริง 13 พ.ย. 16:40/16:45: เนื้อเดียวกัน ⇒ ต้องข้าม ไม่ใช่เซฟ `(1113)` ซ้ำ
-                same_size = str(meta.get("size", "")) == str(p.get("body", {}).get("size", ""))
-                if same_size:
+                # ⇒ เทียบขนาดของ "ไบต์ที่ดาวน์โหลดจริง" กับ size จาก metadata ของ Drive (หน่วยเดียวกัน)
+                #   แล้วจึงเทียบ md5Checksum · เคสจริง 13 พ.ย. 16:40/16:45: เนื้อเดียวกัน ⇒ ต้องข้าม
+                data = fetch_attachment(m["id"], p, token)
+                old_size = str(meta.get("size") or "").strip()
+                if not old_size.isdigit():
+                    # อ่านขนาดไม่ได้ = ตัดสินไม่ได้ ⇒ fail-closed (ไม่เดาว่าเนื้อใหม่)
+                    print("  อ่าน size ของไฟล์เดิมไม่ได้ -> ข้ามรอบนี้ก่อน:", name, flush=True)
+                    skipped += 1
+                    continue
+                if len(data) == int(old_size):
                     old_md5 = meta.get("md5Checksum")
                     if not old_md5:
-                        # อ่าน md5 ไม่ได้ = ตัดสินไม่ได้ ⇒ ข้ามรอบนี้ (fail-closed) แล้วลองใหม่รอบหน้า
                         print("  อ่าน md5 ของไฟล์เดิมไม่ได้ -> ข้ามรอบนี้ก่อน:", name, flush=True)
                         skipped += 1
                         continue
-                    data = fetch_attachment(m["id"], p, token)
                     if old_md5 == hashlib.md5(data).hexdigest():
                         print("  same content as file in Drive -> skip:", name, flush=True)
                         continue
                 else:
                     print("  existing file size ต่างกัน = เนื้อใหม่", flush=True)
-                if data is None:
-                    data = fetch_attachment(m["id"], p, token)
                 print(f"  same name for NEW content -> save as: {alt}", flush=True)
                 name = alt
             else:
                 data = fetch_attachment(m["id"], p, token)
-            if data is None:
-                continue
             seen_names.add((folder_id, name))
             to_upload.append((name, data, folder_id))
             print("  new file:", name, len(data), "bytes", flush=True)
@@ -330,7 +355,11 @@ def run():
     if done_ids:
         for mid in done_ids:
             state[mid] = today
-        save_state(state_folder, state, token)
+        if not save_state(state_folder, state, token):
+            # 13 พ.ย. 69 (review): เขียน state ไม่สำเร็จต้องมีสัญญาณ — ไม่งั้นฟีเจอร์ "จำเมล" ตายเงียบ
+            print("  ⚠️ เขียน state ไม่สำเร็จ — รอบหน้าอาจสแกนซ้ำ (guard size/md5 ยังกันไฟล์ซ้ำ)", flush=True)
+            safe_line("🚨 cgman-monitor: เขียน state ไม่สำเร็จ — การจำเมลใช้ไม่ได้ "
+                      "(ไฟล์ไม่น่าซ้ำเพราะมี guard size/md5 แต่ควรตรวจ)")
 
     if to_upload:
         names = "\n".join(n for n, _, _ in to_upload)
